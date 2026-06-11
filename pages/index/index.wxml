@@ -1,0 +1,35 @@
+<view class="page">
+  <view class="hero">
+    <view class="brand-mark">安</view>
+    <text class="title">家路通</text>
+    <text class="subtitle">今天要去哪里？</text>
+  </view>
+
+  <view class="route-list">
+    <button class="route-card mom-card" data-route-id="to-mom" bindtap="goToRoute">
+      <view class="route-icon">去</view>
+      <view class="route-copy">
+        <text class="route-label">去妈妈家</text>
+        <text class="route-place">彩虹湾墨翠里</text>
+        <text class="{{toMomReady ? 'ready-text' : 'not-ready-text'}}">
+          {{toMomReady ? "路线已启用" : "尚未启用 · " + toMomIssueCount + " 步待配置"}}
+        </text>
+      </view>
+      <text class="route-arrow">›</text>
+    </button>
+    <button class="route-card home-card" data-route-id="to-home" bindtap="goToRoute">
+      <view class="route-icon">回</view>
+      <view class="route-copy">
+        <text class="route-label">回家</text>
+        <text class="route-place">富友嘉园一期</text>
+        <text class="{{toHomeReady ? 'ready-text' : 'not-ready-text'}}">
+          {{toHomeReady ? "路线已启用" : "尚未启用 · " + toHomeIssueCount + " 步待配置"}}
+        </text>
+      </view>
+      <text class="route-arrow">›</text>
+    </button>
+  </view>
+
+  <button class="help-button" bindtap="requestHelp">紧急求助</button>
+  <button class="config-button" bindtap="openConfig">家属配置</button>
+</view>

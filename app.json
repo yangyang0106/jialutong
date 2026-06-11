@@ -1,0 +1,27 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/route/route",
+    "pages/config/config"
+  ],
+  "window": {
+    "navigationBarTitleText": "家路通",
+    "navigationBarBackgroundColor": "#176b72",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f2f7f7",
+    "backgroundTextStyle": "light"
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于计算您距离下一个路线地点还有多远"
+    },
+    "scope.record": {
+      "desc": "用于录制每一步的真人语音提示"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation"
+  ],
+  "lazyCodeLoading": "requiredComponents",
+  "sitemapLocation": "sitemap.json"
+}

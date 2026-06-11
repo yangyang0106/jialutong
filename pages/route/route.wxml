@@ -1,0 +1,89 @@
+<view class="page" wx:if="{{currentStep}}">
+  <view class="topbar">
+    <button
+      wx:if="{{!isFinished && currentStepIndex > 0}}"
+      class="top-previous"
+      bindtap="previousStep"
+    >
+      ‹ 上一条
+    </button>
+    <view wx:else class="top-spacer"></view>
+    <view class="progress-copy">
+      <text class="progress-label">当前路线</text>
+      <text class="progress">第 {{currentStep.stepNo}} / {{route.steps.length}} 步</text>
+    </view>
+    <view class="mode-pill">{{currentStep.mode}}</view>
+  </view>
+
+  <view class="photo-card">
+    <image
+      wx:if="{{currentStep.image}}"
+      class="step-image"
+      src="{{currentStep.image}}"
+      mode="aspectFill"
+      binderror="handleImageError"
+    />
+    <view wx:else class="image-placeholder">
+      <view class="placeholder-mark">图</view>
+      <text>等待家属放入地点照片</text>
+    </view>
+    <view wx:if="{{currentStep.direction}}" class="direction-arrow">
+      {{currentStep.direction}}
+    </view>
+  </view>
+
+  <view wx:if="{{!isFinished}}" class="content-card">
+    <text class="action-label">现在要做</text>
+    <text class="step-title">{{currentStep.title}}</text>
+    <text class="step-desc">{{currentStep.desc}}</text>
+    <view wx:if="{{currentStep.warning}}" class="warning-box">
+      {{currentStep.warning}}
+    </view>
+
+    <view wx:if="{{currentStep.verificationRequired}}" class="verify-box">
+      此步骤需要家属按高德地图并实地确认后才能使用
+    </view>
+
+    <view class="distance-box">
+      <text class="distance">{{distanceText}}</text>
+      <text wx:if="{{isNearby}}" class="nearby">
+        已经接近目标点，马上自动进入下一步
+      </text>
+      <text wx:if="{{locationError}}" class="location-error">{{locationError}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{isFinished}}" class="finished-card">
+    <text class="finished-title">已经到达</text>
+    <text class="finished-desc">路线已完成，请注意安全。</text>
+  </view>
+
+  <view class="actions">
+    <button wx:if="{{!isFinished}}" class="button next" bindtap="nextStep">
+      我到了，下一步
+    </button>
+    <view wx:if="{{!isFinished}}" class="secondary-actions">
+      <button class="small-button audio" bindtap="replayAudio">播放语音</button>
+      <button class="small-button help" bindtap="requestHelp">求助</button>
+    </view>
+    <button wx:if="{{isFinished}}" class="button next" bindtap="backHome">
+      返回首页
+    </button>
+  </view>
+
+  <view wx:if="{{helpVisible}}" class="help-overlay">
+    <view class="help-card">
+      <text wx:if="{{isOffRoute}}" class="stop-title">请停下，不要继续走</text>
+      <text wx:else class="help-title">请帮我联系家人</text>
+      <text class="help-line">我要去：{{route.name}}</text>
+      <text class="help-line">现在进行：{{currentStep.title}}</text>
+      <text class="help-line">当前位置：{{currentLocationText}}</text>
+      <button class="button call-family" bindtap="callFamily">拨打家属电话</button>
+      <button class="button help" bindtap="callEmergency">拨打紧急联系人</button>
+      <button wx:if="{{isOffRoute && canResume}}" class="button resume" bindtap="resumeRoute">
+        家属确认后继续
+      </button>
+      <button wx:else class="button close-help" bindtap="closeHelp">返回路线</button>
+    </view>
+  </view>
+</view>
