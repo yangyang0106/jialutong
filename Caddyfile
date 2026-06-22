@@ -1,0 +1,9 @@
+api.jialutong.cloud {
+    encode zstd gzip
+
+    request_body {
+        max_size 50MB
+    }
+
+    reverse_proxy api:8090
+}
