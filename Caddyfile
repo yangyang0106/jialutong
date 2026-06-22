@@ -1,4 +1,4 @@
-api.jialutong.cloud {
+jialutong.cloud {
     encode zstd gzip
 
     request_body {

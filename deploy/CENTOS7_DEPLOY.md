@@ -7,7 +7,7 @@
 
 ```text
 微信小程序
-  -> https://api.jialutong.cloud
+  -> https://jialutong.cloud
   -> Caddy（自动 HTTPS）
   -> FastAPI 容器 api:8090
   -> ./data 持久化目录
@@ -19,7 +19,7 @@
 
 在域名控制台新增 A 记录：
 
-- 主机记录：`api`
+- 主机记录：`@`
 - 记录值：新服务器公网 IPv4
 
 云服务器安全组和 CentOS 防火墙需允许：
@@ -81,7 +81,7 @@ openssl rand -hex 32
 - 填入百度地图服务端 AK，并在百度控制台允许新服务器出口 IP。
 - 填入腾讯云 TTS 密钥。
 - 填入阿里百炼 API Key。
-- 保持 `JIALUTONG_PUBLIC_BASE_URL=https://api.jialutong.cloud`。
+- 保持 `JIALUTONG_PUBLIC_BASE_URL=https://jialutong.cloud`。
 
 `.env.production` 不得提交到 Git，也不要通过聊天或截图公开。
 
@@ -97,7 +97,7 @@ curl http://127.0.0.1:8090/health
 DNS 已生效且 80/443 可访问时，Caddy 会自动申请 HTTPS 证书。公网验证：
 
 ```bash
-curl https://api.jialutong.cloud/health
+curl https://jialutong.cloud/health
 ```
 
 预期响应：
@@ -129,8 +129,8 @@ docker compose ps
 
 在微信公众平台配置：
 
-- request 合法域名：`https://api.jialutong.cloud`
-- uploadFile 合法域名：`https://api.jialutong.cloud`
-- downloadFile 合法域名：`https://api.jialutong.cloud`
+- request 合法域名：`https://jialutong.cloud`
+- uploadFile 合法域名：`https://jialutong.cloud`
+- downloadFile 合法域名：`https://jialutong.cloud`
 
 完成公网接口验证后，再修改小程序生产环境服务地址。
