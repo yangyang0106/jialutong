@@ -2,6 +2,9 @@ services:
   api:
     build:
       context: .
+      args:
+        PIP_INDEX_URL: https://mirrors.aliyun.com/pypi/simple
+        PIP_DEFAULT_TIMEOUT: "120"
     container_name: jialutong-api
     restart: unless-stopped
     env_file:

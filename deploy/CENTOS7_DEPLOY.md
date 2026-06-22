@@ -44,6 +44,18 @@ docker version
 docker compose version
 ```
 
+如果 Docker Hub 访问超时，腾讯云服务器可增加镜像加速：
+
+```bash
+mkdir -p /etc/docker
+printf '%s\n' '{"registry-mirrors":["https://mirror.ccs.tencentyun.com"]}' > /etc/docker/daemon.json
+systemctl daemon-reload
+systemctl restart docker
+```
+
+生产 Compose 已为 Python 依赖构建配置国内 PyPI 镜像，避免
+`files.pythonhosted.org` 超时。
+
 如果 Docker 官方仓库不再为 CentOS 7 提供可安装包，应停止部署并升级系统，
 不要在宿主机上临时拼装过时的 Python/OpenSSL 运行环境。
 
