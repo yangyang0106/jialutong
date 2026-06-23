@@ -9,7 +9,7 @@ cd jialutong-server
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-JIALUTONG_UPLOAD_TOKEN=change-me \
+JIALUTONG_UPLOAD_TOKEN=local-dev-token \
 JIALUTONG_PUBLIC_BASE_URL=http://127.0.0.1:8090 \
 JIALUTONG_BAIDU_MAP_KEY=替换为百度地图服务端AK \
 uvicorn app.main:app --host 0.0.0.0 --port 8090
@@ -17,6 +17,13 @@ uvicorn app.main:app --host 0.0.0.0 --port 8090
 
 ## 接口
 
+- `GET /api/auth/status`：查询是否已创建家庭账号
+- `POST /api/auth/wechat-login`：微信小程序快速登录，服务端用 code 换 openid 并签发家路通 Token
+- `POST /api/auth/elder-bind-codes`：为老人档案生成一次性绑定码
+- `POST /api/auth/wechat-bind-elder`：老人微信使用绑定码绑定老人档案
+- `POST /api/auth/elder-bindings`：已登录用户输入绑定码绑定老人档案
+- `POST /api/auth/logout`：退出当前登录态
+- `GET /api/auth/me`：查询当前微信账号、家庭身份和老人档案
 - `POST /api/files`：上传图片或音频
 - `DELETE /api/files?url=...`：删除已上传文件
 - `GET /api/routes/{route_id}`：获取路线步骤配置
@@ -36,7 +43,22 @@ uvicorn app.main:app --host 0.0.0.0 --port 8090
 - `GET /api/engine/routes/{route_id}/trip-summary`：统计步骤结果
 - `GET /files/...`：访问上传后的文件
 
-写接口使用 `Authorization: Bearer <JIALUTONG_UPLOAD_TOKEN>`。
+家属端写接口使用 `Authorization: Bearer <登录后返回的 token>`。
+`JIALUTONG_UPLOAD_TOKEN` 仅在显式配置时作为部署脚本和应急管理 Token 兼容保留；未配置时不启用旧 Token 鉴权。不要将它放入小程序代码包。
+
+正式小程序端使用微信快速登录：
+
+- 小程序端调用 `wx.login` 获取一次性 code。
+- 服务端调用微信 `jscode2session` 换取 openid。
+- 服务端创建或找回家庭、家属账号、默认老人档案与绑定关系。
+- 服务端签发家路通 Token；微信 `session_key` 不返回给小程序。
+
+需要在服务端配置：
+
+```bash
+JIALUTONG_WECHAT_APPID=微信小程序AppID
+JIALUTONG_WECHAT_SECRET=微信小程序AppSecret
+```
 
 创建路线时需设置 `elderSlot` 为 `TO_MOM` 或 `TO_HOME`，发布后老人首页对应按钮才会读取该路线。
 
@@ -73,4 +95,4 @@ docker run -d \
 
 在反向代理或云平台上为服务配置 HTTPS。然后将同一域名加入微信公众平台的 `request` 与 `uploadFile` 合法域名。
 
-注意：当前无登录 MVP 会将上传 Token 放在小程序配置中，适合家庭内测，不适合公开大规模使用。公开发布应增加登录与短期上传凭证。
+注意：当前账号体系使用 SQLite 文件 `auth.db` 保存家庭、家属、老人档案、绑定关系和会话，适合 MVP 和小规模内测。公开多家庭产品可继续迁移到 PostgreSQL，并增加家庭邀请、账号锁定和短期上传凭证。

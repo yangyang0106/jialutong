@@ -74,6 +74,10 @@ class RouteStep(BaseModel):
     requiresFamilyReview: bool = False
     reviewStatus: Literal["PENDING", "APPROVED", "REJECTED"] = "PENDING"
     reviewNote: str = ""
+    reviewedByUserId: str = ""
+    reviewedByName: str = ""
+    reviewedByRole: str = ""
+    reviewedAt: str = ""
     elderShortAction: str = ""
     landmarkSuggestion: str = ""
     photoSuggestion: str = ""
@@ -89,10 +93,17 @@ class EngineRoute(BaseModel):
     id: str
     name: str
     elderSlot: Literal["TO_MOM", "TO_HOME"] | None = None
+    elderId: str = ""
     origin: dict[str, Any]
     destination: dict[str, Any]
     travelModes: list[str] = Field(default_factory=list)
-    status: Literal["DRAFT", "NEEDS_REVIEW", "READY", "PUBLISHED", "DISABLED"] = "DRAFT"
+    status: Literal["DRAFT", "NEEDS_REVIEW", "READY", "PUBLISHED", "DISABLED", "ARCHIVED"] = "DRAFT"
+    lifecycleStatus: Literal["DRAFT", "WAITING_REVIEW", "PUBLISHED", "DISABLED", "ARCHIVED"] = "DRAFT"
+    reviewLevel: Literal["UNREVIEWED", "SELF_REVIEWED", "GUARDIAN_REVIEWED"] = "UNREVIEWED"
+    reviewedByUserId: str = ""
+    reviewedByName: str = ""
+    reviewedByRole: str = ""
+    reviewedAt: str = ""
     version: int = 1
     distance: int = 0
     estimatedDuration: int = 0
@@ -123,6 +134,7 @@ class StepReview(BaseModel):
 
 
 class StepExecution(BaseModel):
+    id: str = ""
     tripId: str
     routeId: str
     stepId: str
@@ -130,6 +142,15 @@ class StepExecution(BaseModel):
     stepResult: Literal["FOUND", "NOT_FOUND", "HELP"]
     occurredAt: str = ""
     helpReason: str = ""
+    helpStatus: Literal["NONE", "REQUESTED", "CALLING", "RESOLVED"] = "NONE"
+    emergencyContactName: str = ""
+    emergencyRelation: str = ""
+    emergencyPhone: str = ""
+
+
+class HelpEventUpdate(BaseModel):
+    helpStatus: Literal["REQUESTED", "CALLING", "RESOLVED"]
+    handledNote: str = ""
 
 
 class RoutePlanRequest(BaseModel):
@@ -185,3 +206,29 @@ class VoiceRenderRequest(BaseModel):
     stepId: str
     moment: Literal["enter", "repeat", "near", "arrived", "offRoute"]
     text: str
+
+
+class AuthWechatLoginRequest(BaseModel):
+    code: str
+    familyName: str = "我的家庭"
+
+
+class ElderBindCodeRequest(BaseModel):
+    elderId: str
+    relation: str = "本人"
+
+
+class ElderBindRequest(BaseModel):
+    code: str
+
+
+class AuthWechatBindElderRequest(BaseModel):
+    code: str
+    bindCode: str
+
+
+class ElderProfileRequest(BaseModel):
+    name: str
+    phone: str = ""
+    note: str = ""
+    relation: str = "家属"

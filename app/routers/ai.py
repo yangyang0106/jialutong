@@ -4,7 +4,15 @@ from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.auth import family_guard
 from app.services.voice import VOICE_MOMENTS, normalize_route_voices, normalize_voice, voice_field
+
+
+def _require_family_admin(principal: dict[str, Any]) -> None:
+    if principal.get("authType") == "LEGACY_TOKEN":
+        return
+    if principal.get("role") not in {"FAMILY_ADMIN", "SUPER_ADMIN"}:
+        raise HTTPException(status_code=403, detail="需要家庭管理员操作")
 
 
 def create_ai_router(
@@ -23,13 +31,18 @@ def create_ai_router(
 
     @router.post(
         "/api/engine/routes/{route_id}/ai-generate-voices",
-        dependencies=[Depends(require_token)],
     )
-    def ai_generate_route_voices(route_id: str) -> dict:
+    def ai_generate_route_voices(
+        route_id: str,
+        principal: dict[str, Any] = Depends(require_token),
+    ) -> dict:
+        _require_family_admin(principal)
         with engine_routes_lock:
             routes = load_engine_routes()
             route = routes.get(route_id)
             if not route:
+                raise HTTPException(status_code=404, detail="route not found")
+            if not family_guard(principal, route):
                 raise HTTPException(status_code=404, detail="route not found")
             if route.get("status") == "PUBLISHED":
                 raise HTTPException(status_code=409, detail="published route is immutable")
@@ -46,6 +59,8 @@ def create_ai_router(
             route = routes.get(route_id)
             if not route or route.get("status") == "PUBLISHED":
                 raise HTTPException(status_code=409, detail="route changed while generating")
+            if not family_guard(principal, route):
+                raise HTTPException(status_code=404, detail="route not found")
             for step in route.get("steps", []):
                 suggestion = suggestions_by_id.get(step["id"])
                 if not suggestion:
@@ -79,13 +94,17 @@ def create_ai_router(
 
     @router.post(
         "/api/engine/routes/{route_id}/collection-plan",
-        dependencies=[Depends(require_token)],
     )
-    def generate_route_collection_plan(route_id: str) -> dict:
+    def generate_route_collection_plan(
+        route_id: str,
+        principal: dict[str, Any] = Depends(require_token),
+    ) -> dict:
         with engine_routes_lock:
             routes = load_engine_routes()
             route = routes.get(route_id)
             if not route:
+                raise HTTPException(status_code=404, detail="route not found")
+            if not family_guard(principal, route):
                 raise HTTPException(status_code=404, detail="route not found")
             route_copy = json.loads(json.dumps(route, ensure_ascii=False))
         route_copy = normalize_route_voices(route_copy)

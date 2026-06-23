@@ -3,8 +3,16 @@ from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.auth import family_guard
 from app.schemas import PhotoReviewRequest
 from app.services.voice import normalize_route_voices
+
+
+def _require_family_admin(principal: dict[str, Any]) -> None:
+    if principal.get("authType") == "LEGACY_TOKEN":
+        return
+    if principal.get("role") not in {"FAMILY_ADMIN", "SUPER_ADMIN"}:
+        raise HTTPException(status_code=403, detail="需要家庭管理员操作")
 
 
 def create_review_router(
@@ -23,19 +31,26 @@ def create_review_router(
     router = APIRouter()
 
     @router.get("/api/engine/routes/{route_id}/review-center")
-    def get_route_review_center(route_id: str) -> dict:
+    def get_route_review_center(
+        route_id: str,
+        principal: dict[str, Any] = Depends(require_token),
+    ) -> dict:
         route = load_engine_routes().get(route_id)
         if not route:
             raise HTTPException(status_code=404, detail="route not found")
+        if not family_guard(principal, route):
+            raise HTTPException(status_code=404, detail="route not found")
         return build_route_review_center(normalize_route_voices(route), load_trip_results())
 
-    @router.post(
-        "/api/engine/routes/{route_id}/trip-analysis",
-        dependencies=[Depends(require_token)],
-    )
-    def analyze_route_trip(route_id: str) -> dict:
+    @router.post("/api/engine/routes/{route_id}/trip-analysis")
+    def analyze_route_trip(
+        route_id: str,
+        principal: dict[str, Any] = Depends(require_token),
+    ) -> dict:
         route = load_engine_routes().get(route_id)
         if not route:
+            raise HTTPException(status_code=404, detail="route not found")
+        if not family_guard(principal, route):
             raise HTTPException(status_code=404, detail="route not found")
         route = normalize_route_voices(route)
         review_center = build_route_review_center(route, load_trip_results())
@@ -43,15 +58,20 @@ def create_review_router(
 
     @router.post(
         "/api/engine/routes/{route_id}/steps/{step_id}/photo-review",
-        dependencies=[Depends(require_token)],
     )
     def review_engine_route_step_photo(
-        route_id: str, step_id: str, photo_request: PhotoReviewRequest
+        route_id: str,
+        step_id: str,
+        photo_request: PhotoReviewRequest,
+        principal: dict[str, Any] = Depends(require_token),
     ) -> dict:
+        _require_family_admin(principal)
         with engine_routes_lock:
             routes = load_engine_routes()
             route = routes.get(route_id)
             if not route:
+                raise HTTPException(status_code=404, detail="route not found")
+            if not family_guard(principal, route):
                 raise HTTPException(status_code=404, detail="route not found")
             if route.get("status") == "PUBLISHED":
                 raise HTTPException(status_code=409, detail="published route is immutable")

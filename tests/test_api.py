@@ -1,4 +1,5 @@
 import importlib
+import sqlite3
 from urllib.error import URLError
 
 from fastapi.testclient import TestClient
@@ -94,6 +95,33 @@ def build_engine_route():
     }
 
 
+def build_engine_route_with_id(route_id: str, name: str = "去妈妈家"):
+    route = build_engine_route()
+    route["id"] = route_id
+    route["name"] = name
+    for index, step in enumerate(route["steps"], start=1):
+        suffix = step["id"].removeprefix("step-")
+        step["id"] = f"{route_id}-{suffix}"
+        step["routeId"] = route_id
+        step["stepNo"] = index
+    return route
+
+
+def approve_and_publish_route(client, headers, route):
+    created = client.post("/api/engine/routes", headers=headers, json=route)
+    assert created.status_code == 200
+    for step in created.json()["steps"]:
+        reviewed = client.put(
+            f"/api/engine/routes/{created.json()['id']}/steps/{step['id']}/review",
+            headers=headers,
+            json={"reviewStatus": "APPROVED"},
+        )
+        assert reviewed.status_code == 200
+    published = client.post(f"/api/engine/routes/{created.json()['id']}/publish", headers=headers)
+    assert published.status_code == 200
+    return published.json()
+
+
 def test_engine_route_review_and_publish(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
     headers = {"Authorization": "Bearer test-token"}
@@ -116,8 +144,11 @@ def test_engine_route_review_and_publish(tmp_path, monkeypatch):
     published = client.post("/api/engine/routes/route-engine-test/publish", headers=headers)
     assert published.status_code == 200
     assert published.json()["status"] == "PUBLISHED"
+    assert published.json()["lifecycleStatus"] == "PUBLISHED"
+    assert published.json()["reviewLevel"] == "GUARDIAN_REVIEWED"
+    assert published.json()["reviewedByRole"] in {"ADMIN", "FAMILY_ADMIN", "SUPER_ADMIN"}
 
-    elderly_route = client.get("/api/engine/elder-routes/TO_MOM")
+    elderly_route = client.get("/api/engine/elder-routes/TO_MOM", headers=headers)
     assert elderly_route.status_code == 200
     assert elderly_route.json()["id"] == "route-engine-test"
 
@@ -137,7 +168,7 @@ def test_unpublished_route_can_be_deleted_but_published_route_cannot(tmp_path, m
     deleted = client.delete("/api/engine/routes/route-engine-test", headers=headers)
     assert deleted.status_code == 200
     assert deleted.json() == {"deleted": True}
-    assert client.get("/api/engine/routes/route-engine-test").status_code == 404
+    assert client.get("/api/engine/routes/route-engine-test", headers=headers).status_code == 404
 
     client.post("/api/engine/routes", headers=headers, json=build_engine_route())
     for step_id in ["step-start", "step-bus", "step-destination"]:
@@ -376,7 +407,7 @@ def test_collection_plan_falls_back_and_does_not_change_route(tmp_path, monkeypa
         task["stepId"] == "step-bus" and task["voiceType"] == "offRoute"
         for task in plan["voiceTasks"]
     )
-    unchanged = client.get("/api/engine/routes/route-engine-test").json()
+    unchanged = client.get("/api/engine/routes/route-engine-test", headers=headers).json()
     assert unchanged["status"] == created["status"]
     assert unchanged["steps"][1]["reviewStatus"] == created["steps"][1]["reviewStatus"]
 
@@ -508,7 +539,7 @@ def test_published_route_can_be_disabled(tmp_path, monkeypatch):
     disabled = client.post("/api/engine/routes/route-engine-test/disable", headers=headers)
     assert disabled.status_code == 200
     assert disabled.json()["status"] == "DISABLED"
-    assert client.get("/api/engine/elder-routes/TO_MOM").status_code == 404
+    assert client.get("/api/engine/elder-routes/TO_MOM", headers=headers).status_code == 404
 
 
 def test_trip_results_summary(tmp_path, monkeypatch):
@@ -529,12 +560,66 @@ def test_trip_results_summary(tmp_path, monkeypatch):
         )
         assert response.status_code == 200
 
-    result = client.get("/api/engine/routes/route-engine-test/trip-summary").json()
+    unauthenticated = client.get("/api/engine/routes/route-engine-test/trip-summary")
+    assert unauthenticated.status_code == 401
+
+    result = client.get(
+        "/api/engine/routes/route-engine-test/trip-summary",
+        headers=headers,
+    ).json()
     assert result["summary"] == {"total": 2, "FOUND": 1, "NOT_FOUND": 0, "HELP": 1}
     assert result["routeHealthLevel"] == "BAD"
     assert result["foundCount"] == 1
     assert result["helpCount"] == 1
     assert result["problemSteps"][0]["problemLevel"] == "NEEDS_ATTENTION"
+
+
+def test_help_result_records_contact_metadata(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    headers = {"Authorization": "Bearer test-token"}
+    client.post("/api/engine/routes", headers=headers, json=build_engine_route())
+
+    response = client.post(
+        "/api/engine/trip-results",
+        headers=headers,
+        json={
+            "tripId": "trip-help",
+            "routeId": "route-engine-test",
+            "stepId": "step-start",
+            "stepNo": 1,
+            "stepResult": "HELP",
+            "helpReason": "USER_REQUEST",
+            "emergencyContactName": "小王",
+            "emergencyRelation": "女儿",
+            "emergencyPhone": "13800000000",
+        },
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["id"].startswith("trip-result-")
+    assert result["helpStatus"] == "REQUESTED"
+    assert result["emergencyContactName"] == "小王"
+    assert result["emergencyRelation"] == "女儿"
+    assert result["emergencyPhone"] == "13800000000"
+
+    events = client.get(
+        "/api/engine/routes/route-engine-test/help-events",
+        headers=headers,
+    )
+    assert events.status_code == 200
+    assert events.json()["events"][0]["id"] == result["id"]
+
+    resolved = client.put(
+        f"/api/engine/routes/route-engine-test/help-events/{result['id']}",
+        headers=headers,
+        json={"helpStatus": "RESOLVED", "handledNote": "家属已回电"},
+    )
+    assert resolved.status_code == 200
+    resolved_result = resolved.json()
+    assert resolved_result["helpStatus"] == "RESOLVED"
+    assert resolved_result["handledNote"] == "家属已回电"
+    assert resolved_result["handledByUserId"] == "legacy"
+    assert resolved_result["handledAt"]
 
 
 def test_route_review_center_and_trip_analysis(tmp_path, monkeypatch):
@@ -553,7 +638,7 @@ def test_route_review_center_and_trip_analysis(tmp_path, monkeypatch):
             json={"routeId": "route-engine-test", **payload},
         )
 
-    center = client.get("/api/engine/routes/route-engine-test/review-center")
+    center = client.get("/api/engine/routes/route-engine-test/review-center", headers=headers)
     assert center.status_code == 200
     result = center.json()
     assert result["routeHealthLevel"] == "BAD"
@@ -589,6 +674,336 @@ def test_photo_review_rule_based_result_is_saved(tmp_path, monkeypatch):
     step = response.json()["route"]["steps"][1]
     assert step["photoReview"]["needRetake"] is True
 
+
+def test_wechat_account_login_and_route_scope(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    import app.main
+
+    monkeypatch.setattr(
+        app.main,
+        "request_wechat_code_session",
+        lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
+    )
+
+    status = client.get("/api/auth/status")
+    assert status.status_code == 200
+    assert status.json() == {"bootstrapped": False}
+
+    login = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "family-admin", "familyName": "阳阳家"},
+    )
+    assert login.status_code == 200
+    assert login.json()["user"]["familyName"] == "阳阳家"
+    assert login.json()["user"]["role"] == "FAMILY_ADMIN"
+    assert client.get("/api/auth/status").json() == {"bootstrapped": True}
+    family_headers = {"Authorization": f"Bearer {login.json()['token']}"}
+
+    route = build_engine_route()
+    saved = client.post("/api/engine/routes", headers=family_headers, json=route)
+    assert saved.status_code == 200
+    assert saved.json()["familyId"] == login.json()["user"]["familyId"]
+
+    listed = client.get("/api/engine/routes", headers=family_headers)
+    assert [item["id"] for item in listed.json()["routes"]] == ["route-engine-test"]
+
+    blocked = client.get("/api/engine/routes")
+    assert blocked.status_code == 401
+
+    me = client.get("/api/auth/me", headers=family_headers)
+    assert me.status_code == 200
+    assert me.json()["user"]["wechatBound"] is True
+
+
+def test_wechat_login_creates_family_user_and_elder_binding(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    import app.main
+
+    monkeypatch.setattr(
+        app.main,
+        "request_wechat_code_session",
+        lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
+    )
+
+    login = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "abc123", "familyName": "阳阳家"},
+    )
+    assert login.status_code == 200
+    result = login.json()
+    assert result["token"]
+    assert result["user"]["familyName"] == "阳阳家"
+    assert result["user"]["wechatBound"] is True
+    assert result["user"]["accessibleElderIds"]
+    assert result["user"]["role"] == "FAMILY_ADMIN"
+    assert "session_key" not in str(result)
+
+    headers = {"Authorization": f"Bearer {result['token']}"}
+    me = client.get("/api/auth/me", headers=headers)
+    assert me.status_code == 200
+    assert me.json()["elders"][0]["name"] == "默认老人"
+
+    second_login = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "abc123", "familyName": "另一个家庭名不会覆盖"},
+    )
+    assert second_login.status_code == 200
+    assert second_login.json()["user"]["familyId"] == result["user"]["familyId"]
+
+
+def test_two_wechat_families_have_isolated_elder_routes(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    import app.main
+
+    monkeypatch.setattr(
+        app.main,
+        "request_wechat_code_session",
+        lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
+    )
+
+    family_a = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "family-a", "familyName": "A家"},
+    ).json()
+    family_b = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "family-b", "familyName": "B家"},
+    ).json()
+    headers_a = {"Authorization": f"Bearer {family_a['token']}"}
+    headers_b = {"Authorization": f"Bearer {family_b['token']}"}
+
+    route_a = approve_and_publish_route(
+        client, headers_a, build_engine_route_with_id("route-family-a", "A家路线")
+    )
+    route_b = approve_and_publish_route(
+        client, headers_b, build_engine_route_with_id("route-family-b", "B家路线")
+    )
+
+    assert route_a["status"] == "PUBLISHED"
+    assert route_b["status"] == "PUBLISHED"
+
+    elder_route_a = client.get("/api/engine/elder-routes/TO_MOM", headers=headers_a)
+    elder_route_b = client.get("/api/engine/elder-routes/TO_MOM", headers=headers_b)
+    assert elder_route_a.status_code == 200
+    assert elder_route_b.status_code == 200
+    assert elder_route_a.json()["id"] == "route-family-a"
+    assert elder_route_b.json()["id"] == "route-family-b"
+
+    listed_a = client.get("/api/engine/routes", headers=headers_a).json()["routes"]
+    listed_b = client.get("/api/engine/routes", headers=headers_b).json()["routes"]
+    assert [route["id"] for route in listed_a] == ["route-family-a"]
+    assert [route["id"] for route in listed_b] == ["route-family-b"]
+
+    public_read = client.get("/api/engine/elder-routes/TO_MOM")
+    assert public_read.status_code == 401
+
+
+def test_session_user_cannot_access_unowned_legacy_route_without_family_id(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    import app.main
+
+    monkeypatch.setattr(
+        app.main,
+        "request_wechat_code_session",
+        lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
+    )
+    login = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "legacy-reader", "familyName": "A家"},
+    ).json()
+    headers = {"Authorization": f"Bearer {login['token']}"}
+
+    legacy_headers = {"Authorization": "Bearer test-token"}
+    legacy_route = build_engine_route_with_id("legacy-route", "旧路线")
+    legacy_route.pop("familyId", None)
+    created = client.post("/api/engine/routes", headers=legacy_headers, json=legacy_route)
+    assert created.status_code == 200
+
+    listed = client.get("/api/engine/routes", headers=headers)
+    assert listed.status_code == 200
+    assert listed.json()["routes"] == []
+    assert client.get("/api/engine/routes/legacy-route", headers=headers).status_code == 404
+
+
+def test_family_member_cannot_manage_route(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    import app.main
+
+    monkeypatch.setattr(
+        app.main,
+        "request_wechat_code_session",
+        lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
+    )
+
+    login = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "member-user", "familyName": "成员家庭"},
+    ).json()
+    headers = {"Authorization": f"Bearer {login['token']}"}
+
+    with sqlite3.connect(tmp_path / "auth.db") as conn:
+        conn.execute(
+            "UPDATE family_members SET role = 'FAMILY_MEMBER' WHERE user_id = ?",
+            (login["user"]["id"],),
+        )
+
+    created = client.post(
+        "/api/engine/routes",
+        headers=headers,
+        json=build_engine_route_with_id("member-route", "成员创建路线"),
+    )
+    assert created.status_code == 200
+    step_id = created.json()["steps"][0]["id"]
+
+    reviewed = client.put(
+        f"/api/engine/routes/member-route/steps/{step_id}/review",
+        headers=headers,
+        json={"reviewStatus": "APPROVED"},
+    )
+    assert reviewed.status_code == 403
+
+    updated_route = created.json()
+    updated_route["name"] = "成员修改路线"
+    updated = client.put(
+        "/api/engine/routes/member-route",
+        headers=headers,
+        json=updated_route,
+    )
+    assert updated.status_code == 403
+
+    deleted = client.delete("/api/engine/routes/member-route", headers=headers)
+    assert deleted.status_code == 403
+
+    disabled = client.post("/api/engine/routes/member-route/disable", headers=headers)
+    assert disabled.status_code == 403
+
+    published = client.post("/api/engine/routes/member-route/publish", headers=headers)
+    assert published.status_code == 403
+
+    ai_voices = client.post("/api/engine/routes/member-route/ai-generate-voices", headers=headers)
+    assert ai_voices.status_code == 403
+
+    tts = client.post(
+        f"/api/engine/routes/member-route/steps/{step_id}/tts",
+        headers=headers,
+        json={"moment": "enter", "text": "请继续往前走。"},
+    )
+    assert tts.status_code == 403
+
+    batch_tts = client.post(
+        "/api/engine/routes/member-route/tts/batch",
+        headers=headers,
+        json={"regenerateTts": False},
+    )
+    assert batch_tts.status_code == 403
+
+    photo_review = client.post(
+        f"/api/engine/routes/member-route/steps/{step_id}/photo-review",
+        headers=headers,
+        json={"imageUrl": "https://files.example.com/photo.jpg", "imageStatus": "FAMILY", "fileSize": 1024},
+    )
+    assert photo_review.status_code == 403
+
+    help_result = client.post(
+        "/api/engine/trip-results",
+        headers=headers,
+        json={
+            "tripId": "trip-member-help",
+            "routeId": "member-route",
+            "stepId": step_id,
+            "stepNo": 1,
+            "stepResult": "HELP",
+        },
+    )
+    assert help_result.status_code == 200
+
+    help_events = client.get("/api/engine/routes/member-route/help-events", headers=headers)
+    assert help_events.status_code == 200
+
+    resolved = client.put(
+        f"/api/engine/routes/member-route/help-events/{help_result.json()['id']}",
+        headers=headers,
+        json={"helpStatus": "RESOLVED", "handledNote": "普通成员尝试处理"},
+    )
+    assert resolved.status_code == 403
+
+
+
+def test_elder_wechat_binding_uses_family_member_role(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    import app.main
+
+    monkeypatch.setattr(
+        app.main,
+        "request_wechat_code_session",
+        lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
+    )
+
+    admin_login = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "guardian", "familyName": "阳阳家"},
+    ).json()
+    admin_headers = {"Authorization": f"Bearer {admin_login['token']}"}
+    elder_id = admin_login["user"]["accessibleElderIds"][0]
+
+    bind_code = client.post(
+        "/api/auth/elder-bind-codes",
+        headers=admin_headers,
+        json={"elderId": elder_id, "relation": "本人"},
+    )
+    assert bind_code.status_code == 200
+
+    elder_login = client.post(
+        "/api/auth/wechat-bind-elder",
+        json={"code": "elder-phone", "bindCode": bind_code.json()["code"]},
+    )
+    assert elder_login.status_code == 200
+    result = elder_login.json()
+    assert result["user"]["familyId"] == admin_login["user"]["familyId"]
+    assert result["user"]["role"] == "ELDER_USER"
+    assert result["user"]["accessibleElderIds"] == [elder_id]
+    assert result["elder"]["id"] == elder_id
+
+    elder_headers = {"Authorization": f"Bearer {result['token']}"}
+    create_route = client.post(
+        "/api/engine/routes",
+        headers=elder_headers,
+        json=build_engine_route_with_id("elder-created-route", "老人尝试创建"),
+    )
+    assert create_route.status_code == 200
+    publish = client.post("/api/engine/routes/elder-created-route/publish", headers=elder_headers)
+    assert publish.status_code == 403
+
+
+def test_super_admin_openid_can_access_other_family_for_testing(tmp_path, monkeypatch):
+    monkeypatch.setenv("JIALUTONG_SUPER_ADMIN_OPENIDS", "openid-super")
+    client = create_client(tmp_path, monkeypatch)
+    import app.main
+
+    monkeypatch.setattr(
+        app.main,
+        "request_wechat_code_session",
+        lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
+    )
+
+    normal = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "normal", "familyName": "普通家庭"},
+    ).json()
+    normal_headers = {"Authorization": f"Bearer {normal['token']}"}
+    client.post(
+        "/api/engine/routes",
+        headers=normal_headers,
+        json=build_engine_route_with_id("normal-family-route", "普通家庭路线"),
+    )
+
+    super_login = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "super", "familyName": "测试管理员家庭"},
+    ).json()
+    assert super_login["user"]["role"] == "SUPER_ADMIN"
+    super_headers = {"Authorization": f"Bearer {super_login['token']}"}
+    assert client.get("/api/engine/routes/normal-family-route", headers=super_headers).status_code == 200
 
 def test_route_plan_requires_server_side_baidu_key(tmp_path, monkeypatch):
     monkeypatch.setenv("JIALUTONG_BAIDU_MAP_KEY", "")

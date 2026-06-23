@@ -51,11 +51,40 @@ def build_review_summary(steps: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _derive_lifecycle_status(route: dict[str, Any], summary: dict[str, Any]) -> str:
+    status = route.get("status")
+    if status == "PUBLISHED":
+        return "PUBLISHED"
+    if status == "DISABLED":
+        return "DISABLED"
+    if status == "ARCHIVED":
+        return "ARCHIVED"
+    if summary["blockingSteps"]:
+        return "WAITING_REVIEW"
+    return "DRAFT"
+
+
+def _derive_review_level(route: dict[str, Any], summary: dict[str, Any]) -> str:
+    if route.get("reviewLevel") == "SELF_REVIEWED":
+        return "SELF_REVIEWED"
+    if route.get("status") == "PUBLISHED" and summary["ready"]:
+        return route.get("reviewLevel") or "GUARDIAN_REVIEWED"
+    steps = route.get("steps", [])
+    if steps and summary["ready"] and all(
+        step.get("reviewStatus") == "APPROVED" and step.get("reviewedByRole") == "FAMILY_ADMIN"
+        for step in steps
+    ):
+        return "GUARDIAN_REVIEWED"
+    return "UNREVIEWED"
+
+
 def refresh_route_review(route: dict[str, Any], now_iso) -> dict[str, Any]:
     normalize_route_voices(route)
     summary = build_review_summary(route.get("steps", []))
     route["reviewSummary"] = summary
-    if route.get("status") != "PUBLISHED":
+    if route.get("status") not in {"PUBLISHED", "DISABLED", "ARCHIVED"}:
         route["status"] = "READY" if summary["ready"] else "NEEDS_REVIEW"
+    route["lifecycleStatus"] = _derive_lifecycle_status(route, summary)
+    route["reviewLevel"] = _derive_review_level(route, summary)
     route["updatedAt"] = now_iso()
     return route

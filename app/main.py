@@ -12,7 +12,9 @@ import certifi
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
+from app.auth import AuthStore
 from app.routers.ai import create_ai_router
+from app.routers.auth import create_auth_router
 from app.routers.files import create_files_router
 from app.routers.planning import create_planning_router
 from app.routers.review import create_review_router
@@ -38,8 +40,9 @@ UPLOAD_DIR = DATA_DIR / "uploads"
 ROUTES_FILE = DATA_DIR / "routes.json"
 ENGINE_ROUTES_FILE = DATA_DIR / "engine-routes.json"
 TRIP_RESULTS_FILE = DATA_DIR / "trip-results.json"
+AUTH_DB_FILE = DATA_DIR / "auth.db"
 PUBLIC_BASE_URL = os.getenv("JIALUTONG_PUBLIC_BASE_URL", "http://127.0.0.1:8090").rstrip("/")
-API_TOKEN = os.getenv("JIALUTONG_UPLOAD_TOKEN", "change-me")
+API_TOKEN = os.getenv("JIALUTONG_UPLOAD_TOKEN", "")
 BAIDU_MAP_KEY = os.getenv("JIALUTONG_BAIDU_MAP_KEY", "")
 TENCENT_SECRET_ID = os.getenv("JIALUTONG_TENCENT_SECRET_ID", "")
 TENCENT_SECRET_KEY = os.getenv("JIALUTONG_TENCENT_SECRET_KEY", "")
@@ -48,16 +51,18 @@ TENCENT_TTS_VOICE_TYPE = int(os.getenv("JIALUTONG_TENCENT_TTS_VOICE_TYPE", "1010
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+WECHAT_APPID = os.getenv("JIALUTONG_WECHAT_APPID", "")
+WECHAT_SECRET = os.getenv("JIALUTONG_WECHAT_SECRET", "")
 HTTPS_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 routes_lock = Lock()
 engine_routes_lock = Lock()
 trip_results_lock = Lock()
+auth_store = AuthStore(AUTH_DB_FILE, API_TOKEN)
 
 
-def require_token(authorization: str | None = Header(default=None)) -> None:
-    if authorization != f"Bearer {API_TOKEN}":
-        raise HTTPException(status_code=401, detail="invalid token")
+def require_token(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    return auth_store.authenticate(authorization)
 
 
 def load_routes() -> dict:
@@ -160,6 +165,28 @@ def request_baidu_json(url: str) -> dict[str, Any]:
     return result
 
 
+def request_wechat_code_session(code: str) -> dict[str, Any]:
+    if not WECHAT_APPID or not WECHAT_SECRET:
+        raise HTTPException(status_code=503, detail="微信登录尚未配置，请联系管理员")
+    url = (
+        "https://api.weixin.qq.com/sns/jscode2session"
+        f"?appid={WECHAT_APPID}"
+        f"&secret={WECHAT_SECRET}"
+        f"&js_code={code}"
+        "&grant_type=authorization_code"
+    )
+    try:
+        with urlopen(url, timeout=10, context=HTTPS_CONTEXT) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
+        raise HTTPException(status_code=502, detail="微信登录服务暂时不可用，请稍后重试") from error
+    if result.get("errcode"):
+        raise HTTPException(status_code=401, detail="微信登录失败，请重新打开小程序再试")
+    if not result.get("openid"):
+        raise HTTPException(status_code=401, detail="微信登录未返回用户标识，请重试")
+    return result
+
+
 def request_baidu_route_plan(route_request: RoutePlanRequest) -> dict[str, Any]:
     return baidu_map.request_baidu_route_plan(
         route_request,
@@ -210,6 +237,26 @@ def create_app() -> FastAPI:
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     app = FastAPI(title="家路通文件与路线配置服务", version="0.1.0")
     app.mount("/files", StaticFiles(directory=UPLOAD_DIR), name="files")
+    app.include_router(
+        create_auth_router(
+            auth_status=auth_store.status,
+            auth_wechat_login=lambda code, family_name: auth_store.wechat_login(
+                request_wechat_code_session(code)["openid"],
+                family_name,
+            ),
+            auth_wechat_bind_elder=lambda code, bind_code: auth_store.wechat_bind_elder(
+                request_wechat_code_session(code)["openid"], bind_code
+            ),
+            auth_logout=auth_store.logout,
+            auth_me=auth_store.me,
+            require_token=require_token,
+            list_elders=auth_store.list_elders,
+            create_elder=auth_store.create_elder,
+            update_elder=auth_store.update_elder,
+            create_elder_bind_code=auth_store.create_elder_bind_code,
+            bind_elder=auth_store.bind_elder,
+        )
+    )
     app.include_router(
         create_files_router(
             require_token=require_token,

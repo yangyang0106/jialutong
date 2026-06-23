@@ -3,9 +3,17 @@ from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.auth import family_guard
 from app.schemas import BatchTtsRequest, TtsRequest, VoiceRenderRequest
 from app.services import tencent_tts
 from app.services.voice import VOICE_MOMENTS, normalize_voice, voice_field
+
+
+def _require_family_admin(principal: dict[str, Any]) -> None:
+    if principal.get("authType") == "LEGACY_TOKEN":
+        return
+    if principal.get("role") not in {"FAMILY_ADMIN", "SUPER_ADMIN"}:
+        raise HTTPException(status_code=403, detail="需要家庭管理员操作")
 
 
 def create_tts_router(
@@ -24,15 +32,20 @@ def create_tts_router(
 
     @router.post(
         "/api/engine/routes/{route_id}/steps/{step_id}/tts",
-        dependencies=[Depends(require_token)],
     )
     def generate_engine_route_step_tts(
-        route_id: str, step_id: str, tts_request: TtsRequest
+        route_id: str,
+        step_id: str,
+        tts_request: TtsRequest,
+        principal: dict[str, Any] = Depends(require_token),
     ) -> dict:
+        _require_family_admin(principal)
         with engine_routes_lock:
             routes = load_engine_routes()
             route = routes.get(route_id)
             if not route:
+                raise HTTPException(status_code=404, detail="route not found")
+            if not family_guard(principal, route):
                 raise HTTPException(status_code=404, detail="route not found")
             if route.get("status") == "PUBLISHED":
                 raise HTTPException(status_code=409, detail="published route is immutable")
@@ -58,13 +71,19 @@ def create_tts_router(
 
     @router.post(
         "/api/engine/routes/{route_id}/tts/batch",
-        dependencies=[Depends(require_token)],
     )
-    def batch_generate_route_tts(route_id: str, batch_request: BatchTtsRequest) -> dict:
+    def batch_generate_route_tts(
+        route_id: str,
+        batch_request: BatchTtsRequest,
+        principal: dict[str, Any] = Depends(require_token),
+    ) -> dict:
+        _require_family_admin(principal)
         with engine_routes_lock:
             routes = load_engine_routes()
             route = routes.get(route_id)
             if not route:
+                raise HTTPException(status_code=404, detail="route not found")
+            if not family_guard(principal, route):
                 raise HTTPException(status_code=404, detail="route not found")
             if route.get("status") == "PUBLISHED":
                 raise HTTPException(status_code=409, detail="published route is immutable")
@@ -102,13 +121,18 @@ def create_tts_router(
             current = routes.get(route_id)
             if not current or current.get("status") == "PUBLISHED":
                 raise HTTPException(status_code=409, detail="route changed while generating")
+            if not family_guard(principal, current):
+                raise HTTPException(status_code=404, detail="route not found")
             route = refresh_route_review(route)
             routes[route_id] = route
             save_engine_routes(routes)
         return {"route": route, "steps": results}
 
-    @router.post("/api/engine/voice/render", dependencies=[Depends(require_token)])
-    def render_system_voice(render_request: VoiceRenderRequest) -> dict[str, str]:
+    @router.post("/api/engine/voice/render")
+    def render_system_voice(
+        render_request: VoiceRenderRequest,
+        principal: dict[str, Any] = Depends(require_token),
+    ) -> dict[str, str]:
         return tencent_tts.render_cached_system_voice(
             upload_dir=upload_dir,
             public_base_url=public_base_url,
