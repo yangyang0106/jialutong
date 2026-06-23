@@ -1,51 +1,79 @@
 const app = getApp();
-const { getRouteById } = require("../../data/routes");
+const {
+  getCachedOrFixedElderRoute,
+  loadElderRoute
+} = require("../../utils/elder-route-loader");
 const { getRouteStatus } = require("../../utils/route-status");
 const { pullRouteConfig } = require("../../utils/remote-config");
 
 Page({
   data: {
-    toMomReady: false,
-    toHomeReady: false,
-    toMomIssueCount: 0,
-    toHomeIssueCount: 0
+    routeCards: [],
+    isLoading: true
   },
 
   onShow() {
-    Promise.all([pullRouteConfig("to-mom"), pullRouteConfig("to-home")])
-      .catch(() => null)
-      .finally(() => this.refreshStatuses());
+    this.refreshRoutes();
   },
 
-  refreshStatuses() {
-    const toMom = getRouteStatus(getRouteById("to-mom"));
-    const toHome = getRouteStatus(getRouteById("to-home"));
-    this.setData({
-      toMomReady: toMom.ready,
-      toHomeReady: toHome.ready,
-      toMomIssueCount: toMom.incompleteSteps.length,
-      toHomeIssueCount: toHome.incompleteSteps.length
+  refreshRoutes() {
+    const routeIds = ["to-mom", "to-home"];
+    const update = () => {
+      const routeCards = routeIds
+        .map((routeId) => this.buildRouteCard(routeId, getCachedOrFixedElderRoute(routeId)))
+        .filter(Boolean);
+      this.setData({ routeCards });
+    };
+    update();
+    Promise.all(routeIds.map((routeId) =>
+      Promise.all([pullRouteConfig(routeId), loadElderRoute(routeId)]).catch(() => null)
+    )).then(() => {
+      update();
+      this.setData({ isLoading: false });
     });
+  },
+
+  buildRouteCard(routeId, route) {
+    if (!route) return null;
+    const status = getRouteStatus(route);
+    const destination = route.destination && route.destination.name;
+    const origin = route.origin && route.origin.name;
+    const displayName = route.name || "家人路线";
+    return {
+      routeId,
+      icon: displayName.trim().charAt(0) || "路",
+      name: displayName,
+      place: destination || origin || "家人准备的路线",
+      ready: status.ready,
+      issueCount: status.incompleteSteps.length
+    };
   },
 
   goToRoute(event) {
     const routeId = event.currentTarget.dataset.routeId;
-    const status = getRouteStatus(getRouteById(routeId));
-    if (!status.ready) {
-      wx.showModal({
-        title: "路线尚未启用",
-        content: `还有 ${status.incompleteSteps.length} 个步骤未完成配置，请家属先补齐照片、语音、动作说明和坐标。`,
-        confirmText: "去配置",
-        cancelText: "取消",
-        success: ({ confirm }) => {
-          if (confirm) this.openConfig();
+    wx.showLoading({ title: "正在准备路线", mask: true });
+    loadElderRoute(routeId)
+      .then((route) => {
+        const status = getRouteStatus(route);
+        if (!status.ready) {
+          wx.showModal({
+            title: "路线还没准备好",
+            content: "请让家人先把照片、语音和关键地点确认好。",
+            showCancel: false,
+            confirmText: "知道了"
+          });
+          return;
         }
+        wx.navigateTo({
+          url: `/pages/route/route?id=${routeId}`
+        });
+      })
+      .catch(() => {
+        wx.showToast({ title: "路线还没准备好", icon: "none" });
+      })
+      .finally(() => {
+        wx.hideLoading();
       });
-      return;
-    }
-    wx.navigateTo({
-      url: `/pages/route/route?id=${routeId}`
-    });
   },
 
   openConfig() {
@@ -55,16 +83,31 @@ Page({
   },
 
   requestHelp() {
+    const phone = app.globalData.emergencyPhone;
+    const name = app.globalData.emergencyContactName || "紧急联系人";
+    const relation = app.globalData.emergencyRelation;
+    if (!phone) {
+      wx.showModal({
+        title: "未设置求助电话",
+        content: "请先让家人填写紧急联系人姓名、关系和电话。",
+        confirmText: "去配置",
+        cancelText: "取消",
+        success: ({ confirm }) => {
+          if (confirm) this.openConfig();
+        }
+      });
+      return;
+    }
     wx.showModal({
       title: "紧急求助",
-      content: `是否立即拨打 ${app.globalData.emergencyPhone}？`,
+      content: `是否立即联系${relation ? relation + " " : ""}${name}：${phone}？`,
       confirmText: "立即拨打",
       confirmColor: "#b33a3a",
       cancelText: "取消",
       success: (result) => {
         if (result.confirm) {
           wx.makePhoneCall({
-            phoneNumber: app.globalData.emergencyPhone
+            phoneNumber: phone
           });
         }
       }

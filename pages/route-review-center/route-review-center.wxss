@@ -1,0 +1,205 @@
+/* route-review-center 页面 - 路线审核中心 */
+.review-center-page {
+  min-height: 100vh;
+  padding: var(--space-lg);
+  background: var(--color-bg);
+}
+
+.loading-card,
+.health-card,
+.section-card,
+.analysis-card {
+  margin-bottom: var(--space-md);
+  padding: var(--space-lg);
+  border: 3rpx solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.health-card {
+  background: var(--color-primary-light);
+}
+
+.health-label {
+  margin-top: var(--space-sm);
+  color: var(--color-primary-dark);
+  font-size: var(--font-md);
+  font-weight: var(--weight-heading);
+}
+
+.stats-grid {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.stats-item {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-md) var(--space-xs);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.stats-value {
+  color: var(--color-text-primary);
+  font-size: 38rpx;
+  font-weight: var(--weight-heading);
+}
+
+.stats-label,
+.health-copy,
+.empty-copy,
+.analysis-copy,
+.problem-copy,
+.problem-meta,
+.suggestion-copy,
+.step-meta {
+  color: var(--color-text-secondary);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+}
+
+.ai-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 92rpx;
+  margin-top: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: var(--font-md);
+  font-weight: var(--weight-body);
+}
+
+.analysis-step,
+.problem-card,
+.step-stat {
+  margin-top: var(--space-sm);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.analysis-title,
+.problem-title,
+.analysis-label {
+  color: var(--color-text-primary);
+  font-size: var(--font-base);
+  font-weight: var(--weight-heading);
+}
+
+.analysis-label {
+  margin-top: var(--space-sm);
+  color: var(--color-primary-dark);
+}
+
+.problem-meta,
+.suggestion-copy {
+  margin-top: var(--space-xs);
+}
+
+.SERIOUS {
+  border-color: #e0564b;
+}
+
+.NEEDS_ATTENTION,
+.WARNING {
+  border-color: var(--color-primary);
+}
+
+.GOOD,
+.NORMAL {
+  border-color: #cfe7c0;
+}
+
+.step-head {
+  display: flex;
+  align-items: center;
+}
+
+.step-no {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58rpx;
+  height: 58rpx;
+  margin-right: var(--space-sm);
+  border-radius: 18rpx;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-heading);
+}
+
+.step-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.mini-grid {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 2rpx solid var(--color-border);
+}
+
+
+.help-card {
+  margin-top: var(--space-sm);
+  padding: var(--space-md);
+  border: 2rpx solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.help-card.REQUESTED,
+.help-card.CALLING {
+  border-color: #e0564b;
+  background: #fff5f1;
+}
+
+.help-card.RESOLVED {
+  border-color: #cfe7c0;
+}
+
+.help-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.help-title {
+  color: var(--color-text-primary);
+  font-size: var(--font-base);
+  font-weight: var(--weight-heading);
+}
+
+.help-time,
+.help-copy {
+  color: var(--color-text-secondary);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+}
+
+.help-copy {
+  margin-top: var(--space-xs);
+}
+
+.resolve-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88rpx;
+  margin-top: var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-heading);
+}

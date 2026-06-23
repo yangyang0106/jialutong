@@ -12,3 +12,10 @@ $RECYCLE.BIN/
 
 # Node.js
 node_modules/
+
+# Local production credentials. This file is packaged for local preview but
+# must never be committed.
+config/upload.local.js
+
+# Local agent notes
+.workbuddy/

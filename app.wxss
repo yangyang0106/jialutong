@@ -1,15 +1,207 @@
+/* ========================================
+   家路通 - 设计令牌系统 & 全局基础
+   ======================================== */
+
 page {
   min-height: 100%;
-  background: #f2f7f7;
-  color: #173438;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* 设计令牌 - 在此声明，所有子元素可继承 */
+  /* 品牌色 */
+  --color-primary: #ef8739;
+  --color-primary-light: #fff1e3;
+  --color-primary-dark: #96521f;
+
+  /* 语义色 */
+  --color-danger: #d94b43;
+  --color-danger-dark: #b33a3a;
+  --color-success: #4c752f;
+  --color-warning-bg: #fff0da;
+  --color-warning-text: #965b16;
+
+  /* 中性色 */
+  --color-bg: #fffaf5;
+  --color-surface: #ffffff;
+  --color-border: #f1e7dc;
+  --color-text-primary: #222222;
+  --color-text-secondary: #5a4e45;
+  --color-text-tertiary: #96521f;
+
+  /* 间距 (8rpx 基数网格) */
+  --space-xs: 8rpx;
+  --space-sm: 16rpx;
+  --space-md: 24rpx;
+  --space-lg: 32rpx;
+  --space-xl: 48rpx;
+  --space-2xl: 64rpx;
+
+  /* 圆角 */
+  --radius-sm: 16rpx;
+  --radius-md: 24rpx;
+  --radius-lg: 32rpx;
+  --radius-pill: 999rpx;
+
+  /* 阴影 */
+  --shadow-card: 0 10rpx 26rpx rgba(74, 47, 27, 0.07);
+  --shadow-elevated: 0 12rpx 30rpx rgba(74, 47, 27, 0.1);
+
+  /* 字重层级 */
+  --weight-heading: 900;
+  --weight-title: 700;
+  --weight-body: 500;
+  --weight-label: 400;
+
+  /* 字号层级 */
+  --font-xs: 22rpx;
+  --font-sm: 26rpx;
+  --font-base: 28rpx;
+  --font-md: 32rpx;
+  --font-lg: 36rpx;
+  --font-xl: 40rpx;
+  --font-2xl: 48rpx;
+  --font-3xl: 56rpx;
 }
 
+/* 全局 box-sizing */
+view, text, image, button, input, textarea, scroll-view, swiper-item {
+  box-sizing: border-box;
+}
+
+/* 基础 button 样式 */
 button {
-  font-weight: 700;
+  font-weight: var(--weight-title);
   line-height: 1.25;
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 button::after {
   border: none;
+}
+
+button:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+
+/* ========================================
+   共享组件样式
+   ======================================== */
+
+/* 卡片 */
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-lg);
+}
+
+/* 主色按钮 */
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-surface);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  font-size: var(--font-md);
+  font-weight: var(--weight-title);
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* 辅助/浅色按钮 */
+.btn-secondary {
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  font-size: var(--font-md);
+  font-weight: var(--weight-title);
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* 标签徽章 */
+.badge {
+  display: inline-block;
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-label);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-pill);
+}
+
+/* 眉毛标题 (小字分类标签) */
+.eyebrow {
+  font-size: var(--font-sm);
+  font-weight: var(--weight-label);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 2rpx;
+}
+
+/* 表单字段标签 */
+.field-label {
+  font-size: var(--font-sm);
+  font-weight: var(--weight-label);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-xs);
+}
+
+/* 步骤编号 */
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-heading);
+}
+
+/* 区块标题 */
+.section-title {
+  font-size: var(--font-lg);
+  font-weight: var(--weight-title);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-md);
+}
+
+/* 页面大标题 */
+.page-title {
+  font-size: var(--font-3xl);
+  font-weight: var(--weight-heading);
+  color: var(--color-text-primary);
+  line-height: 1.2;
+}
+
+/* 摘要卡片 */
+.summary-card {
+  background: var(--color-primary-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+}
+
+/* 动画 */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease both;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease both;
 }

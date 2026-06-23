@@ -1,0 +1,92 @@
+<view class="review-center-page">
+  <view wx:if="{{loading}}" class="loading-card">正在读取路线复盘...</view>
+
+  <block wx:if="{{center}}">
+    <view class="health-card {{center.routeHealthLevel}}">
+      <text class="eyebrow">路线复盘</text>
+      <text class="page-title">{{center.routeName}}</text>
+      <text class="health-label">{{center.healthLabel}}</text>
+      <view class="stats-grid">
+        <view class="stats-item">
+          <text class="stats-value">{{center.totalTrips}}</text>
+          <text class="stats-label">行程数</text>
+        </view>
+        <view class="stats-item">
+          <text class="stats-value">{{center.foundRateText}}</text>
+          <text class="stats-label">找到率</text>
+        </view>
+        <view class="stats-item">
+          <text class="stats-value">{{center.helpRateText}}</text>
+          <text class="stats-label">求助率</text>
+        </view>
+      </view>
+      <text class="health-copy">FOUND {{center.foundCount}} 次，NOT_FOUND {{center.notFoundCount}} 次，HELP {{center.helpCount}} 次。</text>
+      <button class="ai-button" loading="{{analyzing}}" disabled="{{analyzing}}" bindtap="analyzeTrip">AI分析怎么优化</button>
+    </view>
+
+    <view wx:if="{{analysis}}" class="analysis-card">
+      <text class="section-title">AI优化建议</text>
+      <text class="analysis-summary">{{analysis.routeSummary}}</text>
+      <view wx:for="{{analysis.problemSteps}}" wx:key="stepId" class="analysis-step">
+        <text class="analysis-title">第 {{item.stepNo}} 步 · {{item.priority}}</text>
+        <text class="analysis-copy">{{item.problem}}</text>
+        <text class="analysis-label">可能原因</text>
+        <text wx:for="{{item.possibleReasons}}" wx:for-item="reason" wx:key="*this" class="analysis-copy">· {{reason}}</text>
+        <text class="analysis-label">建议处理</text>
+        <text wx:for="{{item.suggestedFixes}}" wx:for-item="fix" wx:key="*this" class="analysis-copy">· {{fix}}</text>
+      </view>
+    </view>
+
+
+    <view class="section-card">
+      <text class="section-title">求助记录</text>
+      <text wx:if="{{!helpEvents.length}}" class="empty-copy">暂无求助记录。老人长按求助后，这里会显示联系和处理情况。</text>
+      <view wx:for="{{helpEvents}}" wx:key="id" class="help-card {{item.helpStatus}}">
+        <view class="help-head">
+          <text class="help-title">第 {{item.stepNo}} 步 · {{item.helpStatusText}}</text>
+          <text class="help-time">{{item.occurredAt}}</text>
+        </view>
+        <text class="help-copy">{{item.contactText}}</text>
+        <text class="help-copy">原因：{{item.reasonText}}</text>
+        <text wx:if="{{item.handledByName}}" class="help-copy">处理人：{{item.handledByName}}</text>
+        <button
+          wx:if="{{item.helpStatus !== 'RESOLVED'}}"
+          class="resolve-button"
+          loading="{{resolvingHelpId === item.id}}"
+          disabled="{{!!resolvingHelpId}}"
+          data-id="{{item.id}}"
+          bindtap="resolveHelpEvent"
+        >标记已处理</button>
+      </view>
+    </view>
+
+    <view class="section-card">
+      <text class="section-title">问题锚点</text>
+      <text wx:if="{{!center.problemSteps.length}}" class="empty-copy">目前没有明显问题锚点。真实使用后这里会显示找不到或求助较多的位置。</text>
+      <view wx:for="{{center.problemSteps}}" wx:key="stepId" class="problem-card {{item.problemLevel}}">
+        <text class="problem-title">第 {{item.stepNo}} 步 · {{item.problemLabel}}</text>
+        <text class="problem-copy">{{item.title}}</text>
+        <text class="problem-meta">{{item.riskLevel}} · FOUND {{item.foundCount}} / NOT_FOUND {{item.notFoundCount}} / HELP {{item.helpCount}}</text>
+        <text class="suggestion-copy">{{item.suggestedAction}}</text>
+      </view>
+    </view>
+
+    <view class="section-card">
+      <text class="section-title">每步统计</text>
+      <view wx:for="{{center.stepStats}}" wx:key="stepId" class="step-stat">
+        <view class="step-head">
+          <text class="step-no">{{item.stepNo}}</text>
+          <view class="step-copy">
+            <text class="step-title">{{item.title}}</text>
+            <text class="step-meta">{{item.type}} · {{item.riskLevel}} · {{item.problemLabel}}</text>
+          </view>
+        </view>
+        <view class="mini-grid">
+          <text>找到 {{item.foundCount}}</text>
+          <text>找不到 {{item.notFoundCount}}</text>
+          <text>求助 {{item.helpCount}}</text>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>

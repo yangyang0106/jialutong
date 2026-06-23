@@ -3,16 +3,16 @@
   "compileType": "miniprogram",
   "setting": {
     "es6": true,
-    "enhance": true,
+    "enhance": false,
     "postcss": true,
-    "minified": true,
+    "minified": false,
     "compileWorklet": false,
     "uglifyFileName": false,
-    "uploadWithSourceMap": true,
+    "uploadWithSourceMap": false,
     "packNpmManually": false,
     "packNpmRelationList": [],
-    "minifyWXSS": true,
-    "minifyWXML": true,
+    "minifyWXSS": false,
+    "minifyWXML": false,
     "localPlugins": false,
     "disableUseStrict": false,
     "useCompilerPlugins": false,
@@ -29,7 +29,16 @@
   "projectname": "jialutong",
   "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "value": "tests",
+        "type": "folder"
+      },
+      {
+        "value": "README.md",
+        "type": "file"
+      }
+    ],
     "include": []
   },
   "editorSetting": {},

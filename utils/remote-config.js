@@ -1,4 +1,5 @@
-const { apiBaseUrl, uploadToken } = require("../config/upload");
+const { apiBaseUrl } = require("../config/upload");
+const { getAuthHeader } = require("./auth");
 const { saveStepConfig } = require("./route-assets");
 
 function request(path, method = "GET", data) {
@@ -10,7 +11,7 @@ function request(path, method = "GET", data) {
       url: `${apiBaseUrl}${path}`,
       method,
       data,
-      header: uploadToken ? { Authorization: `Bearer ${uploadToken}` } : {},
+      header: getAuthHeader(),
       success: ({ statusCode, data: response }) => {
         if (statusCode < 200 || statusCode >= 300) {
           reject(new Error(`路线配置同步失败：${statusCode}`));

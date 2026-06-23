@@ -1,10 +1,12 @@
 const STORAGE_KEY = "appSettings";
-const DEFAULT_CONTACT_PHONE = "16621633647";
+const DEFAULT_CONTACT_PHONE = "";
 
 function getSettings() {
   return {
     familyPhone: DEFAULT_CONTACT_PHONE,
     emergencyPhone: DEFAULT_CONTACT_PHONE,
+    emergencyContactName: "",
+    emergencyRelation: "",
     ...(wx.getStorageSync(STORAGE_KEY) || {})
   };
 }

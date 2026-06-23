@@ -1,63 +1,76 @@
+/* index 页面 - 首页 */
 .page {
-  box-sizing: border-box;
   min-height: 100vh;
-  padding: 72rpx 32rpx 48rpx;
-  background: linear-gradient(180deg, #dff3f1 0%, #f2f7f7 44%, #f2f7f7 100%);
+  padding: 48rpx var(--space-lg) var(--space-xl);
+  background: var(--color-surface);
 }
 
 .hero {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  margin-bottom: 58rpx;
+  align-items: flex-start;
+  margin-bottom: var(--space-xl);
+  padding: var(--space-xs) var(--space-xs);
 }
 
 .brand-mark {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 118rpx;
-  height: 118rpx;
-  margin-bottom: 24rpx;
-  border-radius: 36rpx;
-  background: #176b72;
-  color: #ffffff;
-  font-size: 62rpx;
-  font-weight: 900;
-  box-shadow: 0 18rpx 42rpx rgba(23, 107, 114, 0.25);
+  width: 104rpx;
+  height: 104rpx;
+  margin-bottom: var(--space-md);
+  border-radius: var(--radius-md);
+  background: #f59a45;
+  color: var(--color-surface);
+  font-size: 58rpx;
+  font-weight: var(--weight-heading);
+  box-shadow: 0 12rpx 28rpx rgba(224, 125, 42, 0.22);
 }
 
 .title {
-  color: #123f44;
-  font-size: 64rpx;
-  font-weight: 900;
-  letter-spacing: 4rpx;
+  color: var(--color-text-primary);
+  font-size: 62rpx;
+  font-weight: var(--weight-heading);
+  letter-spacing: 3rpx;
 }
 
 .subtitle {
-  margin-top: 16rpx;
-  color: #557478;
-  font-size: 38rpx;
-  font-weight: 700;
+  margin-top: var(--space-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--font-base);
+  font-weight: var(--weight-body);
+}
+
+.question {
+  margin-top: var(--space-xl);
+  color: var(--color-text-primary);
+  font-size: var(--font-xl);
+  font-weight: var(--weight-heading);
 }
 
 .route-list {
   display: flex;
   flex-direction: column;
-  gap: 28rpx;
+  gap: var(--space-md);
 }
 
 .route-card {
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: 180rpx;
-  box-sizing: border-box;
-  padding: 30rpx;
-  border-radius: 34rpx;
-  background: #ffffff;
+  min-height: 184rpx;
+  padding: var(--space-lg);
+  border: 3rpx solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
   text-align: left;
-  box-shadow: 0 18rpx 46rpx rgba(23, 69, 73, 0.11);
+  box-shadow: var(--shadow-card);
+  margin: 0;
+}
+
+.route-card::after {
+  border: none;
 }
 
 .route-icon {
@@ -67,59 +80,55 @@
   justify-content: center;
   width: 98rpx;
   height: 98rpx;
-  border-radius: 30rpx;
-  color: #ffffff;
-  font-size: 48rpx;
-  font-weight: 900;
-}
-
-.mom-card .route-icon {
-  background: #ef7f68;
+  border-radius: var(--radius-md);
+  background: #f59a45;
+  color: var(--color-surface);
+  font-size: 46rpx;
+  font-weight: var(--weight-heading);
 }
 
 .home-card .route-icon {
-  background: #268a91;
+  background: #e98235;
 }
 
 .route-copy {
   display: flex;
   flex: 1;
   flex-direction: column;
-  margin-left: 28rpx;
+  margin-left: var(--space-md);
 }
 
 .route-label {
-  color: #173438;
-  font-size: 48rpx;
-  font-weight: 900;
+  color: var(--color-text-primary);
+  font-size: var(--font-xl);
+  font-weight: var(--weight-heading);
 }
 
 .route-place {
-  margin-top: 10rpx;
-  color: #668084;
-  font-size: 31rpx;
-  font-weight: 700;
+  margin-top: var(--space-xs);
+  color: var(--color-text-secondary);
+  font-size: var(--font-md);
+  font-weight: var(--weight-body);
 }
 
 .ready-text,
 .not-ready-text {
-  margin-top: 10rpx;
-  font-size: 25rpx;
-  font-weight: 900;
+  margin-top: var(--space-xs);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-label);
 }
 
 .ready-text {
-  color: #17815d;
+  color: var(--color-primary-dark);
 }
 
 .not-ready-text {
-  color: #b16c23;
+  color: #8a4518;
 }
 
 .route-arrow {
-  color: #9eb0b2;
-  font-size: 72rpx;
-  font-weight: 400;
+  color: #b9a89a;
+  font-size: 70rpx;
 }
 
 .help-button {
@@ -127,23 +136,58 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 132rpx;
-  margin-top: 46rpx;
-  border-radius: 32rpx;
-  background: #d94c4c;
-  color: #ffffff;
-  font-size: 44rpx;
-  font-weight: 900;
-  box-shadow: 0 16rpx 36rpx rgba(180, 49, 49, 0.22);
+  min-height: 128rpx;
+  margin-top: var(--space-xl);
+  border-radius: var(--radius-lg);
+  background: var(--color-danger);
+  color: var(--color-surface);
+  font-size: var(--font-xl);
+  font-weight: var(--weight-heading);
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .config-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  min-height: 92rpx;
-  margin-top: 24rpx;
-  border-radius: 26rpx;
-  background: transparent;
-  color: #557478;
-  font-size: 31rpx;
-  font-weight: 800;
+  min-height: 100rpx;
+  margin-top: var(--space-md);
+  padding-top: 0;
+  padding-bottom: 0;
+  border-radius: var(--radius-md);
+  background: #fff5eb;
+  color: #6f4b2d;
+  font-size: var(--font-base);
+  font-weight: var(--weight-body);
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl) var(--space-lg);
+  text-align: center;
+}
+
+.empty-state-icon {
+  width: 120rpx;
+  height: 120rpx;
+  margin-bottom: var(--space-lg);
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  font-size: 60rpx;
+  font-weight: var(--weight-heading);
+  line-height: 120rpx;
+  text-align: center;
+}
+
+.empty-state-text {
+  color: var(--color-text-secondary);
+  font-size: var(--font-base);
+  font-weight: var(--weight-label);
 }

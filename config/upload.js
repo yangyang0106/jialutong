@@ -1,5 +1,15 @@
+let localConfig = {};
+
+try {
+  localConfig = require("./upload.local");
+} catch (error) {
+  localConfig = {};
+}
+
+const apiBaseUrl = localConfig.apiBaseUrl || "https://jialutong.cloud";
+
 module.exports = {
-  uploadUrl: "",
-  apiBaseUrl: "",
-  uploadToken: ""
+  apiBaseUrl,
+  uploadUrl: localConfig.uploadUrl || `${apiBaseUrl}/api/files`,
+  uploadToken: localConfig.uploadToken || ""
 };

@@ -1,4 +1,5 @@
-const { uploadUrl, uploadToken } = require("../config/upload");
+const { uploadUrl } = require("../config/upload");
+const { getAuthHeader } = require("./auth");
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
 
@@ -13,7 +14,8 @@ function saveLocalFile(tempFilePath) {
 }
 
 function uploadFile(tempFilePath, metadata) {
-  if (!/^https:\/\//.test(uploadUrl)) {
+  const isLocalDevelopmentUrl = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(uploadUrl);
+  if (!/^https:\/\//.test(uploadUrl) && !isLocalDevelopmentUrl) {
     return Promise.reject(new Error("上传地址必须使用 HTTPS"));
   }
   if (!metadata.routeId || !metadata.stepNo || !["image", "audio"].includes(metadata.kind)) {
@@ -24,7 +26,7 @@ function uploadFile(tempFilePath, metadata) {
       url: uploadUrl,
       filePath: tempFilePath,
       name: "file",
-      header: uploadToken ? { Authorization: `Bearer ${uploadToken}` } : {},
+      header: getAuthHeader(),
       formData: metadata,
       success: ({ statusCode, data }) => {
         if (statusCode < 200 || statusCode >= 300) {

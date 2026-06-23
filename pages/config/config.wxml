@@ -1,119 +1,42 @@
 <view class="page">
   <view class="summary-card">
     <text class="eyebrow">家属使用</text>
-    <text class="summary-title">路线素材配置</text>
-    <view class="stat-grid">
-      <view class="stat-item">
-        <text class="stat-value">{{totalSteps}}</text>
-        <text class="stat-label">全部步骤</text>
+    <text class="summary-title">家属配置</text>
+    <text class="summary-note">路线创建、审核和照片语音配置统一放在路线管理中。</text>
+    <view class="account-panel" wx:if="{{authUser}}">
+      <text class="account-label">当前家庭</text>
+      <text class="account-name">{{authUser.familyName}}</text>
+      <text class="account-note">登录身份：{{authUser.displayName || "微信家属"}}</text>
+      <view class="elder-list" wx:if="{{elders.length}}">
+        <text class="account-label">当前照顾对象</text>
+        <view class="elder-pill" wx:for="{{elders}}" wx:key="id">
+          <view class="elder-info">
+            <text>{{item.name}}</text>
+            <text class="elder-relation">{{item.relation}}</text>
+          </view>
+          <button class="bind-code-button" data-id="{{item.id}}" bindtap="generateElderBindCode">生成绑定码</button>
+        </view>
       </view>
-      <view class="stat-item warning-stat">
-        <text class="stat-value">{{missingImages}}</text>
-        <text class="stat-label">缺少照片</text>
-      </view>
-      <view class="stat-item warning-stat">
-        <text class="stat-value">{{missingAudios}}</text>
-        <text class="stat-label">缺少语音</text>
-      </view>
+      <button class="logout-button" bindtap="logoutFamily">退出账号</button>
     </view>
-    <text class="summary-note">建议每一步拍一张面向行进方向的照片，并录一段真人语音。</text>
+    <view class="account-panel account-missing" wx:else>
+      <text class="account-name">还未登录家属账号</text>
+      <text class="account-note">登录后才能创建、审核和发布路线。</text>
+      <button class="login-button" bindtap="openFamilyLogin">登录或创建账号</button>
+    </view>
+    <button class="route-create-entry" bindtap="openRouteManager">进入路线管理</button>
   </view>
 
   <view class="settings-card">
-    <text class="settings-title">联系电话</text>
+    <text class="settings-title">求助联系人</text>
+    <text class="settings-note">这里填写老人找不到路时可以联系的人。发布前不要使用测试号码。</text>
     <text class="field-label">家属电话</text>
     <input class="field-input" type="number" value="{{familyPhone}}" data-field="familyPhone" bindblur="savePhone" />
+    <text class="field-label">紧急联系人姓名</text>
+    <input class="field-input" value="{{emergencyContactName}}" placeholder="例如：女儿小王" data-field="emergencyContactName" bindblur="savePhone" />
+    <text class="field-label">与老人的关系</text>
+    <input class="field-input" value="{{emergencyRelation}}" placeholder="例如：女儿、儿子、邻居" data-field="emergencyRelation" bindblur="savePhone" />
     <text class="field-label">紧急求助电话</text>
     <input class="field-input" type="number" value="{{emergencyPhone}}" data-field="emergencyPhone" bindblur="savePhone" />
   </view>
-
-  <block wx:for="{{routes}}" wx:key="id" wx:for-item="route">
-    <view class="route-heading">
-      <text class="route-title">{{route.name}}</text>
-      <text class="route-count">{{route.steps.length}} 步</text>
-    </view>
-    <block wx:for="{{route.steps}}" wx:key="stepNo" wx:for-item="step">
-      <view class="step-card">
-        <view class="step-heading">
-          <text class="step-number">{{step.stepNo}}</text>
-          <text class="step-title">{{step.title}}</text>
-        </view>
-        <text class="step-desc">{{step.desc}}</text>
-        <text wx:if="{{step.issues}}" class="issues">还缺：{{step.issues}}</text>
-
-        <text class="field-label">老人听到的动作说明</text>
-        <textarea class="field-textarea" value="{{step.desc}}" data-route-id="{{route.id}}" data-step-no="{{step.stepNo}}" data-field="desc" bindblur="saveStepField" />
-        <text class="field-label">照片上的方向箭头，例如：左转、右转、直行</text>
-        <input class="field-input" value="{{step.direction}}" data-route-id="{{route.id}}" data-step-no="{{step.stepNo}}" data-field="direction" bindblur="saveStepField" />
-        <view wx:if="{{step.needsLocation}}" class="coordinate-row">
-          <input class="coordinate-input" type="digit" placeholder="纬度" value="{{step.latitude}}" data-route-id="{{route.id}}" data-step-no="{{step.stepNo}}" data-field="latitude" bindblur="saveStepField" />
-          <input class="coordinate-input" type="digit" placeholder="经度" value="{{step.longitude}}" data-route-id="{{route.id}}" data-step-no="{{step.stepNo}}" data-field="longitude" bindblur="saveStepField" />
-        </view>
-        <button wx:if="{{step.needsLocation}}" class="location-button" data-route-id="{{route.id}}" data-step-no="{{step.stepNo}}" bindtap="captureLocation">
-          使用当前位置作为锚点
-        </button>
-        <checkbox-group wx:if="{{step.needsLocation}}" data-route-id="{{route.id}}" data-step-no="{{step.stepNo}}" bindchange="toggleVerified">
-          <label class="verify-check">
-            <checkbox value="verified" checked="{{step.verificationRequired === false}}" color="#176b72" />
-            已由家属陪同实地确认
-          </label>
-        </checkbox-group>
-
-        <image wx:if="{{step.image}}" class="preview" src="{{step.image}}" mode="aspectFill" />
-        <button
-          class="asset-button image-button"
-          data-route-id="{{route.id}}"
-          data-step-no="{{step.stepNo}}"
-          bindtap="chooseImage"
-        >
-          {{step.image ? "重新拍照片" : "拍摄或选择照片"}}
-        </button>
-        <button
-          wx:if="{{step.image}}"
-          class="delete-button"
-          data-route-id="{{route.id}}"
-          data-step-no="{{step.stepNo}}"
-          data-field="image"
-          bindtap="removeAsset"
-        >
-          删除照片
-        </button>
-
-        <button
-          wx:if="{{recordingKey !== step.assetKey}}"
-          class="asset-button audio-button"
-          data-route-id="{{route.id}}"
-          data-step-no="{{step.stepNo}}"
-          bindtap="startRecording"
-        >
-          {{step.audio ? "重新录制真人语音" : "开始录制真人语音"}}
-        </button>
-        <button
-          wx:if="{{recordingKey === step.assetKey}}"
-          class="asset-button recording-button"
-          bindtap="stopRecording"
-        >
-          正在录音，点这里结束
-        </button>
-        <button
-          wx:if="{{step.audio}}"
-          class="play-button"
-          data-audio="{{step.audio}}"
-          bindtap="playAudio"
-        >
-          试听语音
-        </button>
-        <button
-          wx:if="{{step.audio}}"
-          class="delete-button"
-          data-route-id="{{route.id}}"
-          data-step-no="{{step.stepNo}}"
-          data-field="audio"
-          bindtap="removeAsset"
-        >
-          删除语音
-        </button>
-      </view>
-    </block>
-  </block>
 </view>

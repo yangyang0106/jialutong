@@ -1,0 +1,14 @@
+<view class="page">
+  <view class="hero-card">
+    <text class="eyebrow">老人使用</text>
+    <text class="hero-title">绑定家路通</text>
+    <text class="hero-note">请让家人先生成绑定码。绑定完成后，您打开家路通就能看到家人为您准备好的路线。</text>
+  </view>
+
+  <view class="form-card">
+    <text class="field-label">绑定码</text>
+    <input class="field-input" value="{{bindCode}}" placeholder="输入家人给的绑定码" bindinput="onInput" />
+    <button class="primary-button" loading="{{submitting}}" bindtap="submit">微信绑定</button>
+    <text class="safe-note">老人不用记账号密码，只需要使用微信确认一次。</text>
+  </view>
+</view>

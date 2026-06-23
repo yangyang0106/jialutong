@@ -2,20 +2,22 @@
   "libVersion": "3.16.1",
   "projectname": "jialutong-miniprogram",
   "setting": {
-    "urlCheck": true,
+    "urlCheck": false,
     "coverView": false,
-    "lazyloadPlaceholderEnable": true,
+    "lazyloadPlaceholderEnable": false,
     "skylineRenderEnable": false,
     "preloadBackgroundData": false,
     "autoAudits": false,
-    "useApiHook": true,
+    "useApiHook": false,
     "showShadowRootInWxmlPanel": false,
     "useStaticServer": false,
     "useLanDebug": false,
     "showES6CompileOption": false,
     "compileHotReLoad": true,
+    "useMultiFrameRuntime": false,
+    "useIsolateContext": false,
     "checkInvalidKey": true,
-    "ignoreDevUnusedFiles": true,
+    "ignoreDevUnusedFiles": false,
     "bigPackageSizeSupport": false
   }
 }

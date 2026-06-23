@@ -2,13 +2,18 @@
   "pages": [
     "pages/index/index",
     "pages/route/route",
-    "pages/config/config"
+    "pages/config/config",
+    "pages/family-login/family-login",
+    "pages/elder-bind/elder-bind",
+    "pages/route-create/route-create",
+    "pages/route-review/route-review",
+    "pages/route-review-center/route-review-center"
   ],
   "window": {
     "navigationBarTitleText": "家路通",
-    "navigationBarBackgroundColor": "#176b72",
-    "navigationBarTextStyle": "white",
-    "backgroundColor": "#f2f7f7",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#ffffff",
     "backgroundTextStyle": "light"
   },
   "permission": {
@@ -22,6 +27,5 @@
   "requiredPrivateInfos": [
     "getLocation"
   ],
-  "lazyCodeLoading": "requiredComponents",
   "sitemapLocation": "sitemap.json"
 }

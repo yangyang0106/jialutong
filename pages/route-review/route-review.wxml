@@ -1,0 +1,295 @@
+<view class="family-page">
+  <view wx:if="{{loading}}" class="loading-card">正在读取路线...</view>
+
+  <block wx:if="{{route}}">
+    <view class="review-tabs">
+      <button
+        class="review-tab {{activeReviewTab === 'steps' ? 'review-tab-active' : ''}}"
+        data-tab="steps"
+        bindtap="switchReviewTab"
+      >审核步骤</button>
+      <button
+        class="review-tab {{activeReviewTab === 'tools' ? 'review-tab-active' : ''}}"
+        data-tab="tools"
+        bindtap="switchReviewTab"
+      >路线工具</button>
+    </view>
+
+    <view wx:if="{{activeReviewTab === 'steps'}}" class="compact-review-card">
+      <view class="compact-row">
+        <view class="compact-copy">
+          <text class="compact-title">{{route.name}}</text>
+          <text class="compact-meta">{{route.reviewSummary.pendingReviewSteps}} 步待处理 · {{route.reviewSummary.highRiskSteps}} 个高风险</text>
+        </view>
+        <text class="compact-status">{{route.statusLabel}}</text>
+      </view>
+      <text wx:if="{{collectionPlan}}" class="compact-hint">采集建议已按步骤显示，点“下一条”只看下一步。</text>
+    </view>
+
+    <block wx:if="{{activeReviewTab === 'tools'}}">
+      <view class="summary-card">
+        <text class="eyebrow">家属审核</text>
+        <text class="route-title">{{route.name}}</text>
+        <text class="route-place">{{route.origin.name}} → {{route.destination.name}}</text>
+        <view class="summary-grid">
+          <view class="summary-item">
+            <text class="summary-value">{{route.steps.length}}</text>
+            <text class="summary-label">决策锚点</text>
+          </view>
+          <view class="summary-item">
+            <text class="summary-value">{{route.reviewSummary.pendingReviewSteps}}</text>
+            <text class="summary-label">必须处理</text>
+          </view>
+          <view class="summary-item">
+            <text class="summary-value">{{route.reviewSummary.highRiskSteps}}</text>
+            <text class="summary-label">高风险</text>
+          </view>
+        </view>
+        <text class="status-line">当前状态：{{route.statusLabel}}</text>
+        <text class="summary-copy">系统只保留转弯、公交上下车等决策点。请确认每一步都清楚、安全。</text>
+        <button class="simulator-entry" bindtap="openSimulator">开发模式：模拟执行这条路线</button>
+        <button class="simulator-entry review-center-entry" bindtap="openReviewCenter">路线复盘</button>
+        <view wx:if="{{route.status !== 'PUBLISHED'}}" class="ai-action-row">
+          <button class="ai-action-button" loading="{{aiGenerating}}" disabled="{{aiGenerating || batchTtsGenerating}}" bindtap="generateAiVoices">AI生成语音建议</button>
+          <button class="ai-action-button ai-action-secondary" loading="{{batchTtsGenerating}}" disabled="{{aiGenerating || batchTtsGenerating}}" bindtap="batchGenerateTts">批量生成TTS</button>
+        </view>
+        <view wx:if="{{route.status !== 'PUBLISHED'}}" class="ai-action-row">
+          <button class="ai-action-button collection-action-button" loading="{{collectionPlanning}}" disabled="{{collectionPlanning}}" bindtap="generateCollectionChecklist">AI生成采集清单</button>
+        </view>
+        <view wx:if="{{collectionPlan}}" class="collection-card">
+          <text class="collection-title">真实路线采集清单</text>
+          <text class="collection-summary">{{collectionPlan.summary}}</text>
+          <view class="collection-mini-grid">
+            <text>拍照 {{collectionPlan.photoTaskCount}}</text>
+            <text>地标 {{collectionPlan.landmarkTaskCount}}</text>
+            <text>录音 {{collectionPlan.voiceTaskCount}}</text>
+            <text>检查 {{collectionPlan.reviewTaskCount}}</text>
+          </view>
+          <text class="collection-muted">具体任务已放到当前步骤卡片里。切到“审核步骤”后逐条处理。</text>
+        </view>
+      </view>
+
+      <button class="simulator-entry" bindtap="toggleRouteTree">
+        {{showRouteTree ? "收起完整路线" : "查看完整路线"}}
+      </button>
+      <view wx:if="{{showRouteTree}}" class="route-tree-card">
+        <text class="route-tree-title">完整路线概览</text>
+        <view wx:for="{{route.steps}}" wx:key="id" class="route-tree-item">
+          <view class="route-tree-track">
+            <text class="route-tree-dot">{{item.stepNo}}</text>
+            <view wx:if="{{index < route.steps.length - 1}}" class="route-tree-line"></view>
+          </view>
+          <view class="route-tree-copy">
+            <text class="route-tree-type">{{item.type}}</text>
+            <text class="route-tree-action">{{item.title}}</text>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view wx:if="{{activeReviewTab === 'steps'}}" class="review-pager">
+      <button class="pager-button" disabled="{{currentReviewIndex === 0}}" bindtap="previousStep">上一条</button>
+      <text class="pager-progress">审核 {{currentReviewIndex + 1}} / {{route.steps.length}}</text>
+      <button class="pager-button" disabled="{{currentReviewIndex >= route.steps.length - 1}}" bindtap="nextStep">下一条</button>
+    </view>
+
+    <block wx:if="{{activeReviewTab === 'steps'}}">
+    <block wx:for="{{route.steps}}" wx:key="id">
+    <view wx:if="{{index === currentReviewIndex}}" class="step-card">
+      <view class="step-head">
+        <text class="step-number">{{item.stepNo}}</text>
+        <view class="step-heading-copy">
+          <text class="step-title">{{item.title}}</text>
+          <text class="step-type">{{item.typeLabel}} · {{item.riskLabel}}</text>
+        </view>
+        <text class="review-state {{item.approved ? 'approved' : 'pending'}}">
+          {{item.approved ? "已确认" : "待确认"}}
+        </text>
+      </view>
+
+      <image wx:if="{{item.imageUrl}}" class="step-photo" src="{{item.imageUrl}}" mode="aspectFill" />
+
+      <view wx:if="{{item.hasCollectionTasks}}" class="collection-step-box">
+        <text class="collection-section-title">本步骤采集建议</text>
+        <view wx:if="{{item.collectionTasks.photoTasks.length}}" class="collection-section">
+          <text class="collection-subtitle">照片</text>
+          <view wx:for="{{item.collectionTasks.photoTasks}}" wx:key="reason" class="collection-task">
+            <text class="collection-task-title">{{item.priorityLabel}}拍照</text>
+            <text class="collection-copy">{{item.reason}}</text>
+            <text class="collection-copy">怎么拍：{{item.shootingGuide}}</text>
+            <text wx:if="{{item.badExampleText}}" class="collection-muted">不要这样拍：{{item.badExampleText}}</text>
+          </view>
+        </view>
+        <view wx:if="{{item.collectionTasks.landmarkTasks.length}}" class="collection-section">
+          <text class="collection-subtitle">地标</text>
+          <view wx:for="{{item.collectionTasks.landmarkTasks}}" wx:key="reason" class="collection-task">
+            <text class="collection-task-title">{{item.priorityLabel}}补地标</text>
+            <text class="collection-copy">{{item.reason}}</text>
+            <text wx:if="{{item.landmarkTypeText}}" class="collection-copy">可选地标：{{item.landmarkTypeText}}</text>
+            <text wx:if="{{item.exampleText}}" class="collection-muted">示例：{{item.exampleText}}</text>
+          </view>
+        </view>
+        <view wx:if="{{item.collectionTasks.voiceTasks.length}}" class="collection-section">
+          <text class="collection-subtitle">真人语音</text>
+          <view wx:for="{{item.collectionTasks.voiceTasks}}" wx:key="voiceType" class="collection-task">
+            <text class="collection-task-title">{{item.voiceTypeLabel}} · {{item.priorityLabel}}</text>
+            <text class="collection-copy">{{item.reason}}</text>
+            <text class="collection-script">建议说：{{item.script}}</text>
+          </view>
+        </view>
+        <view wx:if="{{item.collectionTasks.reviewTasks.length}}" class="collection-section">
+          <text class="collection-subtitle">发布前检查</text>
+          <view wx:for="{{item.collectionTasks.reviewTasks}}" wx:key="checkItem" class="collection-task">
+            <text class="collection-task-title">{{item.priorityLabel}}检查</text>
+            <text class="collection-copy">{{item.checkItem}}</text>
+            <text class="collection-muted">{{item.reason}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{item.photoReview}}" class="photo-review-box {{item.photoReview.status}}">
+        <text class="photo-review-title">AI照片检查 · {{item.photoReviewLabel}}</text>
+        <text class="photo-review-copy">{{item.photoReviewIssueText}}</text>
+        <text class="photo-review-copy">{{item.photoReviewSuggestionText}}</text>
+      </view>
+
+      <view wx:if="{{item.blockingIssues.length}}" class="blocking-box">
+        <text class="blocking-title">发布前必须处理</text>
+        <text class="blocking-copy">{{item.blockingIssueText}}</text>
+      </view>
+
+      <view wx:if="{{route.status !== 'PUBLISHED' && (item.type === 'LEFT' || item.type === 'RIGHT' || item.type === 'STRAIGHT')}}" class="landmark-box">
+        <text class="voice-label">地标提示{{item.riskLevel === 'HIGH' ? '（高风险必填）' : ''}}</text>
+        <input
+          class="landmark-input"
+          value="{{item.landmarkHint}}"
+          placeholder="例如：红色便利店"
+          data-step-id="{{item.id}}"
+          bindblur="updateLandmarkHint"
+        />
+      </view>
+
+      <view class="voice-box">
+        <view class="voice-status-row">
+          <text class="voice-status-title">语音陪伴</text>
+          <text class="voice-status">五类文案已准备 {{item.preparedVoiceCount}} / 5</text>
+        </view>
+        <button
+          class="voice-expand-button"
+          data-step-id="{{item.id}}"
+          bindtap="toggleVoiceSettings"
+        >
+          {{expandedVoiceStepId === item.id ? "收起语音设置" : "展开语音设置"}}
+        </button>
+        <view wx:if="{{expandedVoiceStepId === item.id}}" class="voice-moment-list">
+          <view wx:for="{{item.voiceMoments}}" wx:for-item="voiceItem" wx:key="moment" class="voice-moment">
+            <text class="voice-label">{{voiceItem.label}} · {{voiceItem.typeLabel}}</text>
+            <textarea
+              wx:if="{{route.status !== 'PUBLISHED' && voiceItem.voiceType !== 'CUSTOM'}}"
+              class="voice-edit-input"
+              value="{{voiceItem.text}}"
+              maxlength="60"
+              data-step-id="{{item.id}}"
+              data-moment="{{voiceItem.moment}}"
+              bindblur="updateVoiceText"
+            />
+            <text wx:else class="voice-copy">{{voiceItem.text}}</text>
+            <view class="voice-actions">
+              <button
+                wx:if="{{voiceItem.hasAudio}}"
+                class="voice-play-button"
+                data-step-id="{{item.id}}"
+                data-moment="{{voiceItem.moment}}"
+                data-audio="{{voiceItem.audioUrl}}"
+                bindtap="playCustomVoice"
+              >{{playingStepId === voiceItem.key ? "正在播放" : "试听"}}</button>
+              <button
+                wx:if="{{route.status !== 'PUBLISHED'}}"
+                class="tts-button"
+                loading="{{busyStepId === item.id}}"
+                disabled="{{!!recordingStepId || !!busyStepId}}"
+                data-step-id="{{item.id}}"
+                data-moment="{{voiceItem.moment}}"
+                bindtap="generateTts"
+              >生成系统语音</button>
+              <button
+                wx:if="{{route.status !== 'PUBLISHED' && recordingStepId !== voiceItem.key}}"
+                class="record-button"
+                disabled="{{!!recordingStepId || busyStepId === item.id}}"
+                data-step-id="{{item.id}}"
+                data-step-no="{{item.stepNo}}"
+                data-moment="{{voiceItem.moment}}"
+                bindtap="startRecording"
+              >{{voiceItem.hasCustomVoice ? "重录" : "录音"}}</button>
+              <button
+                wx:if="{{recordingStepId === voiceItem.key}}"
+                class="record-stop-button"
+                bindtap="stopRecording"
+              >完成录音</button>
+              <button
+                wx:if="{{route.status !== 'PUBLISHED' && voiceItem.hasCustomVoice}}"
+                class="voice-delete-button"
+                data-step-id="{{item.id}}"
+                data-moment="{{voiceItem.moment}}"
+                bindtap="deleteCustomVoice"
+              >删除</button>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{item.aiConfidence}}" class="ai-suggestion-box">
+        <text class="ai-suggestion-title">AI建议 · 置信度{{item.aiConfidenceLabel}}</text>
+        <text class="ai-suggestion-copy">当前动作：{{item.elderShortAction}}</text>
+        <text class="ai-suggestion-copy">地标建议：{{item.landmarkSuggestion}}</text>
+        <text class="ai-suggestion-copy">照片建议：{{item.photoSuggestion}}</text>
+        <text class="ai-suggestion-copy">审核重点：{{item.familyReviewFocus}}</text>
+      </view>
+
+      <text wx:if="{{item.transit}}" class="transit-copy">
+        {{item.transit.lineName}} · {{item.transit.stationName}}
+        <text wx:if="{{item.transit.direction}}"> · {{item.transit.direction}}</text>
+        <text wx:if="{{item.transit.accessName}}"> · {{item.transit.accessName}}</text>
+      </text>
+      <view wx:if="{{item.transitWarning}}" class="blocking-box">
+        <text class="blocking-title">交通信息需要确认</text>
+        <text class="blocking-copy">{{item.transitWarning}}</text>
+      </view>
+
+      <button
+        wx:if="{{route.status !== 'PUBLISHED'}}"
+        class="photo-button"
+        loading="{{busyStepId === item.id}}"
+        data-step-id="{{item.id}}"
+        data-step-no="{{item.stepNo}}"
+        bindtap="addFamilyPhoto"
+      >
+        {{item.imageStatus === "FAMILY" ? "重新拍家属实景照片" : "拍摄家属实景照片"}}
+      </button>
+      <view wx:if="{{route.status !== 'PUBLISHED'}}" class="review-actions">
+        <button class="reject-button" data-step-id="{{item.id}}" bindtap="rejectStep">需要修改</button>
+        <button
+          class="approve-button"
+          loading="{{busyStepId === item.id}}"
+          disabled="{{!item.canApprove}}"
+          data-step-id="{{item.id}}"
+          bindtap="approveStep"
+        >
+          {{item.approved ? "已经确认" : "确认这一步"}}
+        </button>
+      </view>
+    </view>
+    </block>
+
+    <button
+      wx:if="{{route.status !== 'PUBLISHED'}}"
+      class="publish-button"
+      loading="{{publishing}}"
+      bindtap="publishRoute"
+    >
+      发布家人路线
+    </button>
+    <view wx:else class="published-note">路线已经发布并锁定</view>
+    </block>
+  </block>
+</view>

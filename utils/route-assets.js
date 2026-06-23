@@ -39,10 +39,19 @@ function saveStepConfig(routeId, stepNo, config) {
 function applyAssetsToRoute(route) {
   return {
     ...route,
-    steps: route.steps.map((step) => ({
-      ...step,
-      ...getStepAsset(route.id, step.stepNo)
-    }))
+    steps: route.steps.map((step) => {
+      const configuredStep = {
+        ...step,
+        ...(route.published ? {} : getStepAsset(route.id, step.stepNo))
+      };
+      return {
+        ...configuredStep,
+        imageUrl: configuredStep.imageUrl || configuredStep.image || "",
+        image: configuredStep.image || configuredStep.imageUrl || "",
+        arriveRadius: Number(configuredStep.arriveRadius) || 30,
+        showDirectionDistance: Number(configuredStep.showDirectionDistance) || 30
+      };
+    })
   };
 }
 

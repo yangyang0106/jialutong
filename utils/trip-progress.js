@@ -5,10 +5,11 @@ function getTripProgress(routeId) {
   return allProgress[routeId] || null;
 }
 
-function saveTripProgress(routeId, currentStepIndex) {
+function saveTripProgress(routeId, currentStepIndex, tripId) {
   const allProgress = wx.getStorageSync(STORAGE_KEY) || {};
   allProgress[routeId] = {
     currentStepIndex,
+    tripId: tripId || allProgress[routeId] && allProgress[routeId].tripId || "",
     updatedAt: Date.now()
   };
   wx.setStorageSync(STORAGE_KEY, allProgress);

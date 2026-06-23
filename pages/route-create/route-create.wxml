@@ -1,0 +1,126 @@
+<view class="family-page">
+  <view class="intro-card">
+    <text class="eyebrow">家属使用</text>
+    <text class="page-title">路线管理</text>
+    <text class="intro-copy">新建路线、继续审核草稿，或查看已经发布的路线。</text>
+    <view class="section-tabs">
+      <button class="section-tab {{activeSection === 'routes' ? 'section-tab-active' : ''}}" bindtap="showRouteList">我的路线</button>
+      <button class="section-tab {{activeSection === 'create' ? 'section-tab-active' : ''}}" bindtap="showCreateForm">新建路线</button>
+    </view>
+  </view>
+
+  <view wx:if="{{activeSection === 'create'}}" class="form-card">
+    <text class="section-title">路线信息</text>
+    <text class="field-label">显示在首页哪个位置</text>
+    <view class="mode-row">
+      <button
+        wx:for="{{elderSlotOptions}}"
+        wx:key="value"
+        class="mode-button {{elderSlot === item.value ? 'mode-active' : ''}}"
+        data-slot="{{item.value}}"
+        bindtap="chooseElderSlot"
+      >{{item.label}}</button>
+    </view>
+    <text class="field-hint">这里是首页按钮的位置，按钮文字使用下面的路线名称。</text>
+
+    <text class="field-label">路线名称</text>
+    <input class="field-input" placeholder="例如：去医院、去菜场、去女儿家" value="{{routeName}}" bindinput="updateRouteName" />
+
+    <text class="field-label">出行方式</text>
+    <view class="mode-row">
+      <button class="mode-button {{mode === 'WALKING' ? 'mode-active' : ''}}" data-mode="WALKING" bindtap="chooseMode">步行</button>
+      <button class="mode-button {{mode === 'TRANSIT' ? 'mode-active' : ''}}" data-mode="TRANSIT" bindtap="chooseMode">公交优先</button>
+    </view>
+
+    <text class="field-label">起点</text>
+    <button class="location-button" data-field="origin" loading="{{locatingField === 'origin'}}" disabled="{{!!locatingField}}" bindtap="useCurrentLocation">
+      {{locatingField === "origin" ? "正在确认当前位置..." : "使用当前位置作为起点"}}
+    </button>
+    <view class="search-row">
+      <input class="search-input" placeholder="例如：富友嘉园一期" value="{{originKeyword}}" data-field="origin" bindinput="updateKeyword" />
+      <button class="search-button" data-field="origin" bindtap="searchPlace">{{searchingField === 'origin' ? '搜索中' : '搜索'}}</button>
+    </view>
+    <view wx:if="{{origin}}" class="selected-place">
+      <text class="selected-place-name">已选择：{{origin.name}}</text>
+      <text wx:if="{{origin.poiName && origin.poiName !== origin.name}}" class="selected-place-detail">附近：{{origin.poiName}}</text>
+      <text class="selected-place-detail">{{origin.address}} {{origin.detailAddress}}</text>
+    </view>
+    <button wx:for="{{originResults}}" wx:key="id" class="place-option" data-field="origin" data-index="{{index}}" bindtap="selectPlace">
+      <text class="place-name">{{item.name}}</text>
+      <text class="place-address">{{item.address}}</text>
+    </button>
+
+    <text class="field-label">终点</text>
+    <button class="location-button location-button-secondary" data-field="destination" loading="{{locatingField === 'destination'}}" disabled="{{!!locatingField}}" bindtap="useCurrentLocation">
+      {{locatingField === "destination" ? "正在确认当前位置..." : "使用当前位置作为终点"}}
+    </button>
+    <view class="search-row">
+      <input class="search-input" placeholder="例如：彩虹湾墨翠里" value="{{destinationKeyword}}" data-field="destination" bindinput="updateKeyword" />
+      <button class="search-button" data-field="destination" bindtap="searchPlace">{{searchingField === 'destination' ? '搜索中' : '搜索'}}</button>
+    </view>
+    <view wx:if="{{destination}}" class="selected-place">
+      <text class="selected-place-name">已选择：{{destination.name}}</text>
+      <text wx:if="{{destination.poiName && destination.poiName !== destination.name}}" class="selected-place-detail">附近：{{destination.poiName}}</text>
+      <text class="selected-place-detail">{{destination.address}} {{destination.detailAddress}}</text>
+    </view>
+    <button wx:for="{{destinationResults}}" wx:key="id" class="place-option" data-field="destination" data-index="{{index}}" bindtap="selectPlace">
+      <text class="place-name">{{item.name}}</text>
+      <text class="place-address">{{item.address}}</text>
+    </button>
+
+    <button wx:if="{{!aiAdvice}}" class="create-button" loading="{{advising}}" disabled="{{advising}}" bindtap="createRoute">
+      {{advising ? "正在整理路线建议..." : "生成路线建议"}}
+    </button>
+  </view>
+
+  <view wx:if="{{activeSection === 'create' && aiAdvice}}" class="advice-card">
+    <text class="advice-eyebrow">路线顾问建议</text>
+    <text class="section-title">{{aiAdvice.summary}}</text>
+    <text class="advice-reason">{{aiAdvice.reason}}</text>
+    <view class="recommended-plan">
+      <text class="advice-label">推荐方案 {{aiAdvice.recommendedPlanIndex + 1}}</text>
+      <text class="plan-meta">{{recommendedPlan.distanceText}} · {{recommendedPlan.durationText}}</text>
+    </view>
+    <view class="advice-section">
+      <text class="advice-label">风险点</text>
+      <text wx:for="{{aiAdvice.risks}}" wx:key="*this" class="advice-item">· {{item}}</text>
+    </view>
+    <view class="advice-section">
+      <text class="advice-label">拍照建议</text>
+      <text wx:for="{{aiAdvice.photoSuggestions}}" wx:key="*this" class="advice-item">· {{item}}</text>
+    </view>
+    <view class="advice-section">
+      <text class="advice-label">地标建议</text>
+      <text wx:for="{{aiAdvice.landmarkSuggestions}}" wx:key="*this" class="advice-item">· {{item}}</text>
+    </view>
+    <view class="advice-section">
+      <text class="advice-label">家属重点审核</text>
+      <text wx:for="{{aiAdvice.familyReviewFocus}}" wx:key="*this" class="advice-item">· {{item}}</text>
+    </view>
+    <button class="create-button" loading="{{creating}}" disabled="{{creating}}" bindtap="createRoute">
+      {{creating ? "正在生成路线..." : "使用推荐方案生成草稿"}}
+    </button>
+  </view>
+
+  <view wx:if="{{activeSection === 'routes'}}" class="draft-section">
+    <text class="section-title">我的路线</text>
+    <text wx:if="{{!drafts.length}}" class="empty-copy">还没有路线，点击“新建路线”开始创建。</text>
+    <view wx:for="{{drafts}}" wx:key="id" class="draft-card">
+      <view class="draft-copy" data-id="{{item.id}}" bindtap="openDraft">
+        <text class="draft-title">{{item.name}}</text>
+        <text class="draft-meta">{{item.steps.length}} 个锚点 · {{item.status === 'PUBLISHED' ? '已发布到首页' : item.status === 'READY' ? '等待发布' : '等待审核'}}</text>
+      </view>
+      <button
+        wx:if="{{item.canDelete}}"
+        class="draft-delete"
+        loading="{{deletingRouteId === item.id}}"
+        disabled="{{!!deletingRouteId}}"
+        data-id="{{item.id}}"
+        catchtap="deleteDraft"
+      >
+        删除
+      </button>
+      <text wx:else class="draft-arrow" data-id="{{item.id}}" bindtap="openDraft">›</text>
+    </view>
+  </view>
+</view>

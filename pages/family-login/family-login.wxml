@@ -1,0 +1,21 @@
+<view class="page">
+  <view class="hero-card">
+    <text class="eyebrow">家属使用</text>
+    <text class="hero-title">微信快速登录</text>
+    <text class="hero-note">
+      登录后可以创建路线、绑定老人、上传照片、录音和发布路线。
+    </text>
+  </view>
+
+  <view class="form-card">
+    <text class="field-label">家庭名称</text>
+    <input class="field-input" value="{{familyName}}" placeholder="例如：阳阳家" bindinput="onInput" data-field="familyName" />
+
+    <button class="primary-button" loading="{{submitting}}" bindtap="submit">
+      微信一键登录
+    </button>
+
+    <text class="safe-note">仅用于家属管理路线，不会把微信登录凭证保存在小程序里。</text>
+    <button class="ghost-button" bindtap="openElderBind">老人绑定家路通</button>
+  </view>
+</view>
