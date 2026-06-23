@@ -17,7 +17,7 @@
     "useMultiFrameRuntime": false,
     "useIsolateContext": false,
     "checkInvalidKey": true,
-    "ignoreDevUnusedFiles": false,
+    "ignoreDevUnusedFiles": true,
     "bigPackageSizeSupport": false
   }
 }

@@ -3,16 +3,16 @@
   "compileType": "miniprogram",
   "setting": {
     "es6": true,
-    "enhance": false,
+    "enhance": true,
     "postcss": true,
-    "minified": false,
+    "minified": true,
     "compileWorklet": false,
     "uglifyFileName": false,
     "uploadWithSourceMap": false,
     "packNpmManually": false,
     "packNpmRelationList": [],
-    "minifyWXSS": false,
-    "minifyWXML": false,
+    "minifyWXSS": true,
+    "minifyWXML": true,
     "localPlugins": false,
     "disableUseStrict": false,
     "useCompilerPlugins": false,
@@ -36,6 +36,34 @@
       },
       {
         "value": "README.md",
+        "type": "file"
+      },
+      {
+        "value": "scripts",
+        "type": "folder"
+      },
+      {
+        "value": ".workbuddy",
+        "type": "folder"
+      },
+      {
+        "value": ".DS_Store",
+        "type": "file"
+      },
+      {
+        "value": "pages/.DS_Store",
+        "type": "file"
+      },
+      {
+        "value": "config/upload.local.js",
+        "type": "file"
+      },
+      {
+        "value": "config/upload.local.example.js",
+        "type": "file"
+      },
+      {
+        "value": "project.private.config.json",
         "type": "file"
       }
     ],
