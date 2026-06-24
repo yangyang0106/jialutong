@@ -73,6 +73,10 @@ function saveRouteDraft(route) {
   return request("/api/engine/routes", "POST", route);
 }
 
+function createRouteDraftFromBaidu(input) {
+  return request("/api/engine/routes/from-baidu", "POST", input);
+}
+
 function updateRouteDraft(route) {
   return request(`/api/engine/routes/${route.id}`, "PUT", route);
 }
@@ -151,6 +155,7 @@ function updateRouteHelpEvent(routeId, eventId, helpStatus = "RESOLVED", handled
 module.exports = {
   adviseRoutePlans,
   analyzeRouteTrip,
+  createRouteDraftFromBaidu,
   createRoutePlan,
   deleteRouteDraft,
   getPublishedElderRoute,

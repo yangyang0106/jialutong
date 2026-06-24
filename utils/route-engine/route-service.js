@@ -1,12 +1,11 @@
-const { buildFamilyRouteFromBaidu } = require("./route-builder");
 const { normalizeBaiduRoute } = require("./baidu-route-parser");
 const { extractDecisionPoints } = require("./decision-point-extractor");
 const {
   adviseRoutePlans,
   createRoutePlan,
+  createRouteDraftFromBaidu,
   publishRouteDraft,
   reviewRouteStep,
-  saveRouteDraft,
   updateRouteDraft
 } = require("./route-repository");
 
@@ -71,16 +70,16 @@ function createAndSaveRouteDraft(input) {
       });
   return planResponse
     .then((response) =>
-      buildFamilyRouteFromBaidu(response, {
+      createRouteDraftFromBaidu({
         id: input.id,
         name: input.name,
         elderSlot: input.elderSlot,
         origin: input.origin,
         destination: input.destination,
+        planResponse: response,
         routeIndex: input.routeIndex || 0
       })
-    )
-    .then((route) => saveRouteDraft(route));
+    );
 }
 
 function saveReviewedRoute(route) {

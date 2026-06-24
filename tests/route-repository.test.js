@@ -66,6 +66,28 @@ test("route repository requests route planning from the server", async () => {
   assert.equal(calls[0].method, "POST");
 });
 
+test("route repository creates route drafts from Baidu response on the server", async () => {
+  const calls = [];
+  const repository = loadRepositoryWithMock((options) => {
+    calls.push(options);
+    options.success({ statusCode: 200, data: { id: options.data.id, steps: [] } });
+  });
+  const response = await repository.createRouteDraftFromBaidu({
+    id: "route-1",
+    name: "测试路线",
+    elderSlot: "TO_MOM",
+    origin: { name: "起点", latitude: 31.25, longitude: 121.32 },
+    destination: { name: "终点", latitude: 31.3, longitude: 121.45 },
+    planResponse: { result: { routes: [] } },
+    routeIndex: 0
+  });
+  assert.equal(response.id, "route-1");
+  assert.match(calls[0].url, /api\/engine\/routes\/from-baidu$/);
+  assert.equal(calls[0].method, "POST");
+  assert.equal(calls[0].data.name, "测试路线");
+  assert.deepEqual(calls[0].data.planResponse, { result: { routes: [] } });
+});
+
 test("route repository requests structured route advice from the server", async () => {
   const calls = [];
   const repository = loadRepositoryWithMock((options) => {
