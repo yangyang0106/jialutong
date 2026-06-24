@@ -132,6 +132,14 @@ function listBoundElders() {
   return requestAuth("/api/auth/elders").then((response) => response.elders || []);
 }
 
+function getEmergencyContact() {
+  return requestAuth("/api/auth/emergency-contact");
+}
+
+function saveEmergencyContact(contact) {
+  return requestAuth("/api/auth/emergency-contact", "PUT", contact);
+}
+
 function requireFamilyLogin(redirectUrl = "") {
   if (isFamilyLoggedIn()) return true;
   const query = redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}` : "";
@@ -147,11 +155,13 @@ module.exports = {
   getAuthState,
   getAuthStatus,
   getCurrentAccount,
+  getEmergencyContact,
   isFamilyAdmin,
   isFamilyLoggedIn,
   listBoundElders,
   loginWithWechat,
   logoutFamilyAccount,
   requireFamilyLogin,
+  saveEmergencyContact,
   saveAuthState
 };

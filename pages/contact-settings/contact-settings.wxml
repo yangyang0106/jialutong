@@ -38,6 +38,8 @@
       <text>{{contactMessage}}</text>
     </view>
 
-    <button class="save-button" bindtap="saveAndBack">保存并返回</button>
+    <button class="save-button" loading="{{savingContact}}" disabled="{{savingContact}}" bindtap="saveAndBack">
+      {{savingContact ? "正在保存" : "保存并返回"}}
+    </button>
   </view>
 </view>
