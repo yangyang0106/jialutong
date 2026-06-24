@@ -1,0 +1,43 @@
+<view class="page">
+  <view class="summary-card">
+    <text class="eyebrow">求助安全</text>
+    <text class="summary-title">求助联系人</text>
+    <text class="summary-note">老人找不到路时，只拨打这里设置的人。请不要填写测试号码。</text>
+  </view>
+
+  <view class="settings-card">
+    <text class="field-label">联系人姓名</text>
+    <input
+      class="field-input"
+      value="{{emergencyContactName}}"
+      placeholder="例如：女儿小王"
+      data-field="emergencyContactName"
+      bindblur="saveContact"
+    />
+
+    <text class="field-label">与老人的关系</text>
+    <input
+      class="field-input"
+      value="{{emergencyRelation}}"
+      placeholder="例如：女儿、儿子、邻居"
+      data-field="emergencyRelation"
+      bindblur="saveContact"
+    />
+
+    <text class="field-label">求助电话</text>
+    <input
+      class="field-input"
+      type="number"
+      value="{{emergencyPhone}}"
+      placeholder="请输入 11 位手机号"
+      data-field="emergencyPhone"
+      bindblur="saveContact"
+    />
+
+    <view class="{{contactReady ? 'contact-tip ready-tip' : 'contact-tip warning-tip'}}">
+      <text>{{contactMessage}}</text>
+    </view>
+
+    <button class="save-button" bindtap="saveAndBack">保存并返回</button>
+  </view>
+</view>

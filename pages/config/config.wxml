@@ -9,25 +9,18 @@
     <view class="card-heading-row">
       <view class="card-heading-copy">
         <text class="settings-title">求助联系人</text>
-        <text class="settings-note">老人找不到路时，优先联系这里的人。发布前请填写真实号码。</text>
+        <text class="settings-note">{{contactSummary}}</text>
       </view>
       <text class="{{contactReady ? 'status-pill ready-pill' : 'status-pill warning-pill'}}">
         {{contactReady ? "已设置" : "待填写"}}
       </text>
     </view>
-
-    <text class="field-label">联系人姓名</text>
-    <input class="field-input" value="{{emergencyContactName}}" placeholder="例如：女儿小王" data-field="emergencyContactName" bindblur="saveContact" />
-
-    <text class="field-label">与老人的关系</text>
-    <input class="field-input" value="{{emergencyRelation}}" placeholder="例如：女儿、儿子、邻居" data-field="emergencyRelation" bindblur="saveContact" />
-
-    <text class="field-label">求助电话</text>
-    <input class="field-input" type="number" value="{{emergencyPhone}}" placeholder="请输入真实手机号" data-field="emergencyPhone" bindblur="saveContact" />
-
     <view class="contact-warning" wx:if="{{contactWarning}}">
       <text>{{contactWarning}}</text>
     </view>
+    <button class="contact-entry-button" bindtap="openContactSettings">
+      {{contactReady ? "修改求助联系人" : "配置求助联系人"}}
+    </button>
   </view>
 
   <view class="settings-card route-admin-card">

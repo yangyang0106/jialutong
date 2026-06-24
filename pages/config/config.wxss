@@ -78,6 +78,21 @@
   line-height: 1.45;
 }
 
+button.contact-entry-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 92rpx;
+  margin-top: var(--space-md);
+  padding: 0 var(--space-md);
+  border: 3rpx solid #efb57e;
+  border-radius: var(--radius-md);
+  background: #fff8f1;
+  color: var(--color-primary-dark);
+  font-size: var(--font-md);
+  font-weight: var(--weight-heading);
+}
+
 .route-admin-card {
   background: var(--color-surface);
 }

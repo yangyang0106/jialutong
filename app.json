@@ -3,6 +3,7 @@
     "pages/index/index",
     "pages/route/route",
     "pages/config/config",
+    "pages/contact-settings/contact-settings",
     "pages/family-login/family-login",
     "pages/elder-bind/elder-bind",
     "pages/route-create/route-create",

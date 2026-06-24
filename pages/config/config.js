@@ -1,4 +1,4 @@
-const { getSettings, saveSettings } = require("../../utils/settings");
+const { getSettings } = require("../../utils/settings");
 const {
   createElderBindCode,
   getAuthState,
@@ -6,8 +6,6 @@ const {
   logoutFamilyAccount,
   requireFamilyLogin
 } = require("../../utils/auth");
-const app = getApp();
-
 Page({
   data: {
     familyPhone: "",
@@ -16,6 +14,7 @@ Page({
     emergencyRelation: "",
     contactReady: false,
     contactWarning: "",
+    contactSummary: "老人找不到路时，优先联系这里的人。发布前请填写真实号码。",
     authUser: null,
     elders: []
   },
@@ -36,28 +35,12 @@ Page({
     }
   },
 
-  saveContact(event) {
-    const field = event.currentTarget.dataset.field;
-    const value = String(event.detail.value || "").trim();
-    if (!field) return;
-    const patch = { [field]: value };
-    if (field === "emergencyPhone") {
-      patch.familyPhone = value;
-    }
-    const settings = saveSettings(patch);
-    app.globalData.familyPhone = settings.familyPhone;
-    app.globalData.emergencyPhone = settings.emergencyPhone;
-    app.globalData.emergencyContactName = settings.emergencyContactName;
-    app.globalData.emergencyRelation = settings.emergencyRelation;
-    this.setData(settings);
-    this.refreshContactStatus(settings);
-    wx.showToast({ title: "已保存" });
-  },
-
   refreshContactStatus(settings = getSettings()) {
     const phone = String(settings.emergencyPhone || "").trim();
-    const hasName = Boolean(String(settings.emergencyContactName || "").trim());
-    const hasRelation = Boolean(String(settings.emergencyRelation || "").trim());
+    const name = String(settings.emergencyContactName || "").trim();
+    const relation = String(settings.emergencyRelation || "").trim();
+    const hasName = Boolean(name);
+    const hasRelation = Boolean(relation);
     const hasValidPhone = /^1\d{10}$/.test(phone);
     let contactWarning = "";
     if (!phone) {
@@ -69,8 +52,16 @@ Page({
     }
     this.setData({
       contactReady: hasValidPhone && hasName && hasRelation,
-      contactWarning
+      contactWarning,
+      contactSummary:
+        hasValidPhone && hasName
+          ? `${relation ? relation + " " : ""}${name} · ${phone}`
+          : "老人找不到路时，优先联系这里的人。发布前请填写真实号码。"
     });
+  },
+
+  openContactSettings() {
+    wx.navigateTo({ url: "/pages/contact-settings/contact-settings" });
   },
 
   openRouteManager() {
