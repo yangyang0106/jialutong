@@ -15,6 +15,9 @@ JIALUTONG_BAIDU_MAP_KEY=替换为百度地图服务端AK \
 uvicorn app.main:app --host 0.0.0.0 --port 8090
 ```
 
+当前路线和行程结果仍使用 JSON 文件存储，写入锁只在单个进程内有效。本地和生产部署都不要增加
+`--workers`，直到路线数据迁移到 SQLite/PostgreSQL 并由数据库事务接管并发写入。
+
 ## 接口
 
 - `GET /api/auth/status`：查询是否已创建家庭账号
@@ -80,6 +83,7 @@ JIALUTONG_WECHAT_SECRET=微信小程序AppSecret
 
 生产环境建议使用 `docker-compose.yml` 启动。Caddy 自动提供 HTTPS 并代理到
 FastAPI 容器，宿主机的 `8090` 只绑定 `127.0.0.1`，不会直接暴露到公网。
+当前 Dockerfile 使用单进程 uvicorn，禁止改成多 worker，否则 JSON 路线数据可能并发写坏。
 纯 CentOS 7 服务器的完整步骤见
 [`deploy/CENTOS7_DEPLOY.md`](deploy/CENTOS7_DEPLOY.md)。
 

@@ -4,16 +4,9 @@ from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.auth import family_guard
+from app.auth import family_guard, require_family_admin
 from app.schemas import HelpEventUpdate, StepExecution
 from app.services.voice import normalize_route_voices
-
-
-def _require_family_admin(principal: dict[str, Any]) -> None:
-    if principal.get("authType") == "LEGACY_TOKEN":
-        return
-    if principal.get("role") not in {"FAMILY_ADMIN", "SUPER_ADMIN"}:
-        raise HTTPException(status_code=403, detail="需要家庭管理员操作")
 
 
 def create_trip_results_router(
@@ -76,7 +69,7 @@ def create_trip_results_router(
         update: HelpEventUpdate,
         principal: dict[str, Any] = Depends(require_token),
     ) -> dict:
-        _require_family_admin(principal)
+        require_family_admin(principal)
         route = load_engine_routes().get(route_id)
         if not route or not family_guard(principal, route):
             raise HTTPException(status_code=404, detail="route not found")

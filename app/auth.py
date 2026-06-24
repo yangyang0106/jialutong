@@ -911,6 +911,13 @@ def is_super_admin_principal(principal: dict[str, Any]) -> bool:
     return principal.get("authType") == "LEGACY_TOKEN" or principal.get("role") == SUPER_ADMIN
 
 
+def require_family_admin(principal: dict[str, Any]) -> None:
+    if principal.get("authType") == "LEGACY_TOKEN":
+        return
+    if principal.get("role") not in {FAMILY_ADMIN, SUPER_ADMIN}:
+        raise HTTPException(status_code=403, detail="只有家庭管理员可以操作")
+
+
 def family_guard(principal: dict[str, Any], route: dict[str, Any]) -> bool:
     if is_super_admin_principal(principal):
         return True

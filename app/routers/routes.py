@@ -3,18 +3,10 @@ from typing import Any, Callable, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.auth import family_guard, route_owner_patch
+from app.auth import family_guard, require_family_admin, route_owner_patch
 from app.schemas import BaiduRouteDraftRequest, EngineRoute, StepReview
 from app.services.route_engine.route_builder import build_family_route_from_baidu
 from app.services.voice import normalize_route_voices
-
-
-def _require_family_admin(principal: dict[str, Any]) -> None:
-    if principal.get("authType") == "LEGACY_TOKEN":
-        return
-    if principal.get("role") != "FAMILY_ADMIN":
-        raise HTTPException(status_code=403, detail="只有家庭管理员可以管理路线")
-
 
 def create_routes_router(
     *,
@@ -85,7 +77,7 @@ def create_routes_router(
         request: BaiduRouteDraftRequest,
         principal: dict[str, Any] = Depends(require_token),
     ) -> dict:
-        _require_family_admin(principal)
+        require_family_admin(principal)
         route = build_family_route_from_baidu(
             request.planResponse,
             {
@@ -127,7 +119,7 @@ def create_routes_router(
         route_input: EngineRoute,
         principal: dict[str, Any] = Depends(require_token),
     ) -> dict:
-        _require_family_admin(principal)
+        require_family_admin(principal)
         if route_id != route_input.id:
             raise HTTPException(status_code=400, detail="route id mismatch")
         with engine_routes_lock:
@@ -152,7 +144,7 @@ def create_routes_router(
         route_id: str,
         principal: dict[str, Any] = Depends(require_token),
     ) -> dict[str, bool]:
-        _require_family_admin(principal)
+        require_family_admin(principal)
         with engine_routes_lock:
             routes = load_engine_routes()
             route = routes.get(route_id)
@@ -175,7 +167,7 @@ def create_routes_router(
         review: StepReview,
         principal: dict[str, Any] = Depends(require_token),
     ) -> dict:
-        _require_family_admin(principal)
+        require_family_admin(principal)
         with engine_routes_lock:
             routes = load_engine_routes()
             route = routes.get(route_id)
@@ -207,7 +199,7 @@ def create_routes_router(
         route_id: str,
         principal: dict[str, Any] = Depends(require_token),
     ) -> dict:
-        _require_family_admin(principal)
+        require_family_admin(principal)
         with engine_routes_lock:
             routes = load_engine_routes()
             route = routes.get(route_id)
@@ -254,7 +246,7 @@ def create_routes_router(
         route_id: str,
         principal: dict[str, Any] = Depends(require_token),
     ) -> dict:
-        _require_family_admin(principal)
+        require_family_admin(principal)
         with engine_routes_lock:
             routes = load_engine_routes()
             route = routes.get(route_id)

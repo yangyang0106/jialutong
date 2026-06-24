@@ -3,17 +3,10 @@ from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.auth import family_guard
+from app.auth import family_guard, require_family_admin
 from app.schemas import BatchTtsRequest, TtsRequest, VoiceRenderRequest
 from app.services import tencent_tts
 from app.services.voice import VOICE_MOMENTS, normalize_voice, voice_field
-
-
-def _require_family_admin(principal: dict[str, Any]) -> None:
-    if principal.get("authType") == "LEGACY_TOKEN":
-        return
-    if principal.get("role") not in {"FAMILY_ADMIN", "SUPER_ADMIN"}:
-        raise HTTPException(status_code=403, detail="需要家庭管理员操作")
 
 
 def create_tts_router(
@@ -39,7 +32,7 @@ def create_tts_router(
         tts_request: TtsRequest,
         principal: dict[str, Any] = Depends(require_token),
     ) -> dict:
-        _require_family_admin(principal)
+        require_family_admin(principal)
         with engine_routes_lock:
             routes = load_engine_routes()
             route = routes.get(route_id)
@@ -77,7 +70,7 @@ def create_tts_router(
         batch_request: BatchTtsRequest,
         principal: dict[str, Any] = Depends(require_token),
     ) -> dict:
-        _require_family_admin(principal)
+        require_family_admin(principal)
         with engine_routes_lock:
             routes = load_engine_routes()
             route = routes.get(route_id)

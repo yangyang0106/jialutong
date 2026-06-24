@@ -15,6 +15,11 @@
 
 不需要在宿主机安装 Python、Nginx 或 Certbot。
 
+> 当前路线、步骤和行程结果仍使用 JSON 文件存储，后端写入锁只在单个
+> uvicorn 进程内有效。生产部署必须保持单 worker，不要增加
+> `uvicorn --workers`，也不要横向启动多个 api 容器。迁移到数据库事务前，
+> 多 worker 会带来路线 JSON 并发写坏风险。
+
 ## 1. 准备 DNS 和防火墙
 
 在域名控制台新增 A 记录：

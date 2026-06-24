@@ -3,16 +3,9 @@ from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.auth import family_guard
+from app.auth import family_guard, require_family_admin
 from app.schemas import PhotoReviewRequest
 from app.services.voice import normalize_route_voices
-
-
-def _require_family_admin(principal: dict[str, Any]) -> None:
-    if principal.get("authType") == "LEGACY_TOKEN":
-        return
-    if principal.get("role") not in {"FAMILY_ADMIN", "SUPER_ADMIN"}:
-        raise HTTPException(status_code=403, detail="需要家庭管理员操作")
 
 
 def create_review_router(
@@ -65,7 +58,7 @@ def create_review_router(
         photo_request: PhotoReviewRequest,
         principal: dict[str, Any] = Depends(require_token),
     ) -> dict:
-        _require_family_admin(principal)
+        require_family_admin(principal)
         with engine_routes_lock:
             routes = load_engine_routes()
             route = routes.get(route_id)
