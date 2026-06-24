@@ -420,6 +420,86 @@ class AuthStore:
             elder = self._load_elder(conn, elder_id)
         return self._public_elder(elder)
 
+    def get_emergency_contact(
+        self, principal: dict[str, Any], elder_id: str = ""
+    ) -> dict[str, Any]:
+        resolved_elder_id = self._resolve_contact_elder_id(principal, elder_id)
+        if not resolved_elder_id:
+            return self._empty_emergency_contact()
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT *
+                FROM emergency_contacts
+                WHERE family_id = ? AND elder_id = ? AND enabled = 1
+                ORDER BY priority ASC, created_at ASC
+                LIMIT 1
+                """,
+                (principal.get("familyId"), resolved_elder_id),
+            ).fetchone()
+        if not row:
+            return self._empty_emergency_contact(resolved_elder_id)
+        return self._public_emergency_contact(row)
+
+    def save_emergency_contact(
+        self,
+        principal: dict[str, Any],
+        elder_id: str = "",
+        name: str = "",
+        relation: str = "",
+        phone: str = "",
+    ) -> dict[str, Any]:
+        self._require_family_admin(principal)
+        resolved_elder_id = self._resolve_contact_elder_id(principal, elder_id)
+        if not resolved_elder_id:
+            raise HTTPException(status_code=400, detail="请先创建老人档案")
+        name = name.strip()
+        relation = relation.strip()
+        phone = phone.strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="联系人姓名不能为空")
+        if not relation:
+            raise HTTPException(status_code=400, detail="联系人关系不能为空")
+        if not phone:
+            raise HTTPException(status_code=400, detail="求助电话不能为空")
+        now = _now_iso()
+        with self.lock, self._connect() as conn:
+            existing = conn.execute(
+                """
+                SELECT id
+                FROM emergency_contacts
+                WHERE family_id = ? AND elder_id = ? AND priority = 1
+                ORDER BY created_at ASC
+                LIMIT 1
+                """,
+                (principal["familyId"], resolved_elder_id),
+            ).fetchone()
+            if existing:
+                conn.execute(
+                    """
+                    UPDATE emergency_contacts
+                    SET name = ?, relation = ?, phone = ?, enabled = 1, updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (name, relation, phone, now, existing["id"]),
+                )
+                contact_id = existing["id"]
+            else:
+                contact_id = f"contact-{secrets.token_hex(8)}"
+                conn.execute(
+                    """
+                    INSERT INTO emergency_contacts (
+                      id, family_id, elder_id, name, relation, phone, priority, enabled, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, 1, 1, ?, ?)
+                    """,
+                    (contact_id, principal["familyId"], resolved_elder_id, name, relation, phone, now, now),
+                )
+            contact = conn.execute(
+                "SELECT * FROM emergency_contacts WHERE id = ?",
+                (contact_id,),
+            ).fetchone()
+        return self._public_emergency_contact(contact)
+
     def create_elder_bind_code(
         self,
         principal: dict[str, Any],
@@ -506,6 +586,30 @@ class AuthStore:
             return
         if elder_id not in set(principal.get("accessibleElderIds") or []):
             raise HTTPException(status_code=404, detail="老人档案不存在")
+
+    def _resolve_contact_elder_id(self, principal: dict[str, Any], elder_id: str = "") -> str:
+        elder_id = elder_id.strip()
+        if elder_id:
+            self._require_elder_access(principal, elder_id)
+            return elder_id
+        accessible_elder_ids = principal.get("accessibleElderIds") or []
+        if accessible_elder_ids:
+            return accessible_elder_ids[0]
+        family_id = principal.get("familyId")
+        if not family_id:
+            return ""
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT id
+                FROM elders
+                WHERE family_id = ? AND status = 'ACTIVE'
+                ORDER BY created_at ASC
+                LIMIT 1
+                """,
+                (family_id,),
+            ).fetchone()
+        return row["id"] if row else ""
 
     def _create_family(self, conn: sqlite3.Connection, family_name: str, now: str) -> str:
         family_id = f"family-{secrets.token_hex(8)}"
@@ -756,6 +860,32 @@ class AuthStore:
             "canReceiveHelp": bool(elder["can_receive_help"])
             if "can_receive_help" in elder.keys()
             else False,
+        }
+
+    def _public_emergency_contact(self, contact: sqlite3.Row | None) -> dict[str, Any]:
+        if not contact:
+            return self._empty_emergency_contact()
+        return {
+            "id": contact["id"],
+            "familyId": contact["family_id"],
+            "elderId": contact["elder_id"],
+            "name": contact["name"],
+            "relation": contact["relation"],
+            "phone": contact["phone"],
+            "priority": contact["priority"],
+            "enabled": bool(contact["enabled"]),
+        }
+
+    def _empty_emergency_contact(self, elder_id: str = "") -> dict[str, Any]:
+        return {
+            "id": "",
+            "familyId": "",
+            "elderId": elder_id,
+            "name": "",
+            "relation": "",
+            "phone": "",
+            "priority": 1,
+            "enabled": False,
         }
 
     def _delete_expired_sessions(self, conn: sqlite3.Connection) -> None:

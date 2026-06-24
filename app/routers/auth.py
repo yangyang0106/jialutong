@@ -2,7 +2,14 @@ from typing import Callable
 
 from fastapi import APIRouter, Depends, Header
 
-from app.schemas import AuthWechatBindElderRequest, AuthWechatLoginRequest, ElderBindCodeRequest, ElderBindRequest, ElderProfileRequest
+from app.schemas import (
+    AuthWechatBindElderRequest,
+    AuthWechatLoginRequest,
+    ElderBindCodeRequest,
+    ElderBindRequest,
+    ElderProfileRequest,
+    EmergencyContactRequest,
+)
 
 
 def create_auth_router(
@@ -18,6 +25,8 @@ def create_auth_router(
     update_elder: Callable[[dict, str, str, str, str], dict],
     create_elder_bind_code: Callable[[dict, str, str], dict],
     bind_elder: Callable[[dict, str], dict],
+    get_emergency_contact: Callable[[dict, str], dict],
+    save_emergency_contact: Callable[[dict, str, str, str, str], dict],
 ) -> APIRouter:
     router = APIRouter()
 
@@ -74,6 +83,24 @@ def create_auth_router(
         request: ElderBindRequest, principal: dict = Depends(require_token)
     ) -> dict:
         return bind_elder(principal, request.code)
+
+    @router.get("/api/auth/emergency-contact")
+    def read_emergency_contact(
+        elderId: str = "", principal: dict = Depends(require_token)
+    ) -> dict:
+        return get_emergency_contact(principal, elderId)
+
+    @router.put("/api/auth/emergency-contact")
+    def update_emergency_contact(
+        request: EmergencyContactRequest, principal: dict = Depends(require_token)
+    ) -> dict:
+        return save_emergency_contact(
+            principal,
+            request.elderId,
+            request.name,
+            request.relation,
+            request.phone,
+        )
 
     @router.put("/api/auth/elders/{elder_id}")
     def edit_elder(

@@ -24,6 +24,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8090
 - `POST /api/auth/elder-bindings`：已登录用户输入绑定码绑定老人档案
 - `POST /api/auth/logout`：退出当前登录态
 - `GET /api/auth/me`：查询当前微信账号、家庭身份和老人档案
+- `GET /api/auth/emergency-contact`：读取当前家庭和老人档案的默认求助联系人
+- `PUT /api/auth/emergency-contact`：家庭管理员保存默认求助联系人
 - `POST /api/files`：上传图片或音频
 - `DELETE /api/files?url=...`：删除已上传文件
 - `GET /api/routes/{route_id}`：获取路线步骤配置

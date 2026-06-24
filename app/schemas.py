@@ -232,3 +232,10 @@ class ElderProfileRequest(BaseModel):
     phone: str = ""
     note: str = ""
     relation: str = "家属"
+
+
+class EmergencyContactRequest(BaseModel):
+    elderId: str = ""
+    name: str = ""
+    relation: str = ""
+    phone: str = ""

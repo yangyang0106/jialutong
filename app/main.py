@@ -255,6 +255,8 @@ def create_app() -> FastAPI:
             update_elder=auth_store.update_elder,
             create_elder_bind_code=auth_store.create_elder_bind_code,
             bind_elder=auth_store.bind_elder,
+            get_emergency_contact=auth_store.get_emergency_contact,
+            save_emergency_contact=auth_store.save_emergency_contact,
         )
     )
     app.include_router(

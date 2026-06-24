@@ -975,6 +975,68 @@ def test_elder_wechat_binding_uses_family_member_role(tmp_path, monkeypatch):
     assert publish.status_code == 403
 
 
+def test_emergency_contact_is_family_scoped_and_elder_readable(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    import app.main
+
+    monkeypatch.setattr(
+        app.main,
+        "request_wechat_code_session",
+        lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
+    )
+
+    admin_login = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "contact-admin", "familyName": "联系人家庭"},
+    ).json()
+    admin_headers = {"Authorization": f"Bearer {admin_login['token']}"}
+    elder_id = admin_login["user"]["accessibleElderIds"][0]
+
+    empty = client.get("/api/auth/emergency-contact", headers=admin_headers)
+    assert empty.status_code == 200
+    assert empty.json()["phone"] == ""
+    assert empty.json()["elderId"] == elder_id
+
+    saved = client.put(
+        "/api/auth/emergency-contact",
+        headers=admin_headers,
+        json={"name": "小王", "relation": "女儿", "phone": "13800000000"},
+    )
+    assert saved.status_code == 200
+    assert saved.json()["elderId"] == elder_id
+    assert saved.json()["name"] == "小王"
+    assert saved.json()["phone"] == "13800000000"
+
+    missing_relation = client.put(
+        "/api/auth/emergency-contact",
+        headers=admin_headers,
+        json={"name": "小王", "relation": "", "phone": "13800000000"},
+    )
+    assert missing_relation.status_code == 400
+
+    bind_code = client.post(
+        "/api/auth/elder-bind-codes",
+        headers=admin_headers,
+        json={"elderId": elder_id, "relation": "本人"},
+    ).json()["code"]
+    elder_login = client.post(
+        "/api/auth/wechat-bind-elder",
+        json={"code": "contact-elder", "bindCode": bind_code},
+    ).json()
+    elder_headers = {"Authorization": f"Bearer {elder_login['token']}"}
+
+    readable = client.get("/api/auth/emergency-contact", headers=elder_headers)
+    assert readable.status_code == 200
+    assert readable.json()["phone"] == "13800000000"
+
+    blocked = client.put(
+        "/api/auth/emergency-contact",
+        headers=elder_headers,
+        json={"name": "老人修改", "relation": "本人", "phone": "13900000000"},
+    )
+    assert blocked.status_code == 403
+
+
 def test_super_admin_openid_can_access_other_family_for_testing(tmp_path, monkeypatch):
     monkeypatch.setenv("JIALUTONG_SUPER_ADMIN_OPENIDS", "openid-super")
     client = create_client(tmp_path, monkeypatch)
