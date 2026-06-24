@@ -32,13 +32,9 @@ const HELP_HOLD_DURATION = 3000;
 
 function getShortTask(step) {
   if (!step) return "";
+  if (step.elderShortAction) return Array.from(step.elderShortAction).slice(0, 10).join("");
   if (step.shortAction) return Array.from(step.shortAction).slice(0, 10).join("");
   if (step.direction) return Array.from(step.direction).slice(0, 8).join("");
-  if (step.title.includes("14 号线")) return "坐14号线";
-  if (step.title.includes("3 号线")) return step.title.includes("换乘") ? "换乘3号线" : "坐3号线";
-  if (step.title.includes("887 路")) return "坐887路";
-  if (step.title.includes("江湾镇")) return "江湾镇下车";
-  if (step.title.includes("临洮路")) return "临洮路下车";
   return Array.from(step.title).slice(0, 8).join("");
 }
 

@@ -1,4 +1,5 @@
 const { getRouteById } = require("../data/routes");
+const uploadConfig = require("../config/upload");
 const { adaptPublishedRoute } = require("./route-engine/elder-route-adapter");
 const { getPublishedElderRoute } = require("./route-engine/route-repository");
 
@@ -13,7 +14,10 @@ function getCache() {
 }
 
 function getCachedOrFixedElderRoute(routeId) {
-  return getCache()[routeId] || getRouteById(routeId);
+  const cached = getCache()[routeId];
+  if (cached) return cached;
+  if (uploadConfig.enableLocalDemoRoutes) return getRouteById(routeId);
+  return undefined;
 }
 
 function cachePublishedElderRoute(route) {
