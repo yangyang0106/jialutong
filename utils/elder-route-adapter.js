@@ -29,7 +29,7 @@ const TYPE_DIRECTIONS = Object.freeze({
 });
 
 const LOCATION_TYPES = new Set(["START", "STRAIGHT", "LEFT", "RIGHT", "DESTINATION"]);
-const { calculateDistance, normalizePolyline } = require("../geo");
+const { calculateDistance, normalizePolyline } = require("./geo");
 const { listVoiceMoments, normalizeVoiceConfig } = require("./voice-schema");
 
 function protectLegacyTurnVoice(step, inputVoice) {

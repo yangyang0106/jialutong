@@ -14,7 +14,7 @@ function loadLoader(requestHandler, storage = {}) {
     },
     request: requestHandler
   };
-  delete require.cache[require.resolve("../utils/route-engine/route-repository")];
+  delete require.cache[require.resolve("../utils/route-api")];
   delete require.cache[require.resolve("../utils/elder-route-loader")];
   return require("../utils/elder-route-loader");
 }

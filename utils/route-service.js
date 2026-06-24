@@ -6,7 +6,7 @@ const {
   reviewRouteStep,
   summarizeRoutePlansFromBaidu,
   updateRouteDraft
-} = require("./route-repository");
+} = require("./route-api");
 
 function summarizeRoutePlans(response, input) {
   return summarizeRoutePlansFromBaidu({

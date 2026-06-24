@@ -1,14 +1,12 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { buildFamilyRouteFromBaidu } = require("../utils/route-engine/route-builder");
-const { adaptRouteForExecution } = require("../utils/route-engine/elder-route-adapter");
+const { adaptRouteForExecution } = require("../utils/elder-route-adapter");
 const { createExecutionState, processLocation, resetForStep, simulateLocation } = require("../utils/route-executor");
 const { calculateDistance } = require("../utils/geo");
 
 const BASE_URL = process.env.JIALUTONG_BASE_URL || "http://127.0.0.1:8090";
 const TOKEN = process.env.JIALUTONG_UPLOAD_TOKEN || "";
-const BAIDU_KEY = process.env.JIALUTONG_BAIDU_MAP_KEY;
 const ROUTE_ID = process.env.JIALUTONG_E2E_ROUTE_ID || "e2e-fuyou-lintao-walk";
 const REUSE_AUDIO_ROUTE_ID = process.env.JIALUTONG_REUSE_AUDIO_ROUTE_ID || "";
 const headers = {
@@ -40,26 +38,15 @@ async function searchPlace(keyword) {
 }
 
 async function uploadAnchorMap(step) {
-  const { latitude, longitude } = step.location;
-  const convertUrl =
-    `https://api.map.baidu.com/geoconv/v1/?coords=${longitude},${latitude}` +
-    `&from=3&to=5&ak=${encodeURIComponent(BAIDU_KEY)}`;
-  const convertResponse = await fetch(convertUrl);
-  const converted = await convertResponse.json();
-  assert.equal(converted.status, 0, `坐标转换失败：${step.stepNo}`);
-  const baiduLocation = converted.result[0];
-  const mapUrl =
-    `https://api.map.baidu.com/staticimage/v2?ak=${encodeURIComponent(BAIDU_KEY)}` +
-    `&center=${baiduLocation.x},${baiduLocation.y}&width=600&height=400&zoom=19` +
-    `&markers=${baiduLocation.x},${baiduLocation.y}`;
-  const imageResponse = await fetch(mapUrl);
-  assert.equal(imageResponse.ok, true, `锚点图下载失败：${step.stepNo}`);
-  const imageBytes = await imageResponse.arrayBuffer();
+  const pngBytes = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+    "base64"
+  );
   const form = new FormData();
   form.append("routeId", ROUTE_ID);
   form.append("stepNo", String(step.stepNo));
   form.append("kind", "image");
-  form.append("file", new Blob([imageBytes], { type: "image/png" }), `anchor-${step.stepNo}.png`);
+  form.append("file", new Blob([pngBytes], { type: "image/png" }), `anchor-${step.stepNo}.png`);
   const response = await fetch(`${BASE_URL}/api/files`, {
     method: "POST",
     headers: { Authorization: `Bearer ${TOKEN}` },
@@ -71,7 +58,6 @@ async function uploadAnchorMap(step) {
 }
 
 async function main() {
-  assert.ok(BAIDU_KEY, "缺少 JIALUTONG_BAIDU_MAP_KEY");
   const originSearch = await jsonRequest("/api/engine/places/search", {
     method: "POST",
     body: JSON.stringify({ keyword: "富友嘉园一期", region: "上海" })
@@ -93,22 +79,7 @@ async function main() {
       destination: { latitude: destination.latitude, longitude: destination.longitude }
     })
   });
-  const route = buildFamilyRouteFromBaidu(plan, {
-    id: ROUTE_ID,
-    name: "测试：富友嘉园到临洮路站",
-    elderSlot: "TO_MOM",
-    origin,
-    destination
-  });
-
   const existing = await jsonRequest("/api/engine/routes");
-  const reusable = existing.routes.find((item) => item.id === REUSE_AUDIO_ROUTE_ID);
-  if (reusable && reusable.steps.length === route.steps.length) {
-    route.steps.forEach((step, index) => {
-      const sourceStep = reusable.steps[index];
-      if (sourceStep.type === step.type) step.voice = sourceStep.voice;
-    });
-  }
   const previous = existing.routes.find((item) => item.id === ROUTE_ID);
   if (previous && previous.status !== "PUBLISHED") {
     await jsonRequest(`/api/engine/routes/${ROUTE_ID}`, { method: "DELETE" });
@@ -117,10 +88,30 @@ async function main() {
     throw new Error("同名端到端测试路线已经发布，请先更换 ROUTE_ID");
   }
 
-  let saved = await jsonRequest("/api/engine/routes", {
+  let saved = await jsonRequest("/api/engine/routes/from-baidu", {
     method: "POST",
-    body: JSON.stringify(route)
+    body: JSON.stringify({
+      id: ROUTE_ID,
+      name: "测试：富友嘉园到临洮路站",
+      elderSlot: "TO_MOM",
+      origin,
+      destination,
+      planResponse: plan,
+      routeIndex: 0
+    })
   });
+
+  const reusable = existing.routes.find((item) => item.id === REUSE_AUDIO_ROUTE_ID);
+  if (reusable && reusable.steps.length === saved.steps.length) {
+    saved.steps.forEach((step, index) => {
+      const sourceStep = reusable.steps[index];
+      if (sourceStep.type === step.type) step.voice = sourceStep.voice;
+    });
+    saved = await jsonRequest(`/api/engine/routes/${ROUTE_ID}`, {
+      method: "PUT",
+      body: JSON.stringify(saved)
+    });
+  }
 
   for (const step of saved.steps) {
     const imageUrl = await uploadAnchorMap(step);
@@ -130,7 +121,8 @@ async function main() {
         reviewStatus: "APPROVED",
         reviewNote: "端到端测试：坐标地图图，不代表家属实景照片",
         imageUrl,
-        imageStatus: "FAMILY"
+        imageStatus: "FAMILY",
+        landmarkHint: step.landmarkHint || (step.riskLevel === "HIGH" ? "请家属现场确认的明显地标" : "")
       })
     });
   }

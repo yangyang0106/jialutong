@@ -1,5 +1,5 @@
-const { apiBaseUrl } = require("../../config/upload");
-const { getAuthHeader } = require("../auth");
+const { apiBaseUrl } = require("../config/upload");
+const { getAuthHeader } = require("./auth");
 
 function request(path, method = "GET", data, options = {}) {
   if (!apiBaseUrl) {

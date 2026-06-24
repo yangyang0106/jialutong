@@ -1,7 +1,7 @@
 const { getRouteById } = require("../data/routes");
 const uploadConfig = require("../config/upload");
-const { adaptPublishedRoute } = require("./route-engine/elder-route-adapter");
-const { getPublishedElderRoute } = require("./route-engine/route-repository");
+const { adaptPublishedRoute } = require("./elder-route-adapter");
+const { getPublishedElderRoute } = require("./route-api");
 
 const CACHE_KEY = "publishedElderRoutes";
 const ROUTE_ID_SLOTS = Object.freeze({

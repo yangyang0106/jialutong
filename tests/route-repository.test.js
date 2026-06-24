@@ -15,8 +15,8 @@ function loadRepositoryWithMock(responder, storage = null) {
     }
   };
   delete require.cache[require.resolve("../utils/auth")];
-  delete require.cache[require.resolve("../utils/route-engine/route-repository")];
-  return require("../utils/route-engine/route-repository");
+  delete require.cache[require.resolve("../utils/route-api")];
+  return require("../utils/route-api");
 }
 
 test("route repository does not use upload token as an auth fallback", async () => {

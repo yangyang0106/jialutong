@@ -1,13 +1,13 @@
 const {
   createAndSaveRouteDraft,
   prepareRouteAdvice
-} = require("../../utils/route-engine/route-service");
+} = require("../../utils/route-service");
 const {
   deleteRouteDraft,
   listRouteDrafts,
   reverseGeocode,
   searchPlaces
-} = require("../../utils/route-engine/route-repository");
+} = require("../../utils/route-api");
 const { requireFamilyLogin } = require("../../utils/auth");
 
 function createRouteId() {

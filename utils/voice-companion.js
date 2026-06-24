@@ -1,4 +1,4 @@
-const { getVoiceMoment } = require("./route-engine/voice-schema");
+const { getVoiceMoment } = require("./voice-schema");
 
 const ONCE_PER_STEP = new Set(["near", "arrived"]);
 const VOICE_TIMING = Object.freeze({

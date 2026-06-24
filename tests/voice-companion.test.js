@@ -9,7 +9,7 @@ const {
   resumeFromOffRoute,
   VOICE_TIMING
 } = require("../utils/voice-companion");
-const { normalizeVoiceConfig, setVoiceMoment } = require("../utils/route-engine/voice-schema");
+const { normalizeVoiceConfig, setVoiceMoment } = require("../utils/voice-schema");
 
 test("旧语音结构会补齐五类语音文案", () => {
   const voice = normalizeVoiceConfig({

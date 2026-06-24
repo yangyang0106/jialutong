@@ -3,7 +3,7 @@ const {
   getRouteReviewCenter,
   listRouteHelpEvents,
   updateRouteHelpEvent
-} = require("../../utils/route-engine/route-repository");
+} = require("../../utils/route-api");
 
 const HEALTH_LABELS = {
   GOOD: "整体可用",
