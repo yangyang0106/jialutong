@@ -127,6 +127,12 @@ class BaiduRouteDraftRequest(BaseModel):
     routeIndex: int = 0
 
 
+class BaiduRoutePlanSummariesRequest(BaseModel):
+    origin: dict[str, Any]
+    destination: dict[str, Any]
+    planResponse: dict[str, Any]
+
+
 class StepReview(BaseModel):
     reviewStatus: Literal["APPROVED", "REJECTED"] | None = None
     reviewNote: str | None = None

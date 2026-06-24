@@ -504,7 +504,7 @@ def test_generate_step_tts_saves_audio_and_updates_voice(tmp_path, monkeypatch):
     client.post("/api/engine/routes", headers=headers, json=build_engine_route())
     import app.main
 
-    monkeypatch.setattr(app.main, "request_tencent_tts", lambda _text: b"fake-mp3")
+    monkeypatch.setattr(app.main.container, "request_tencent_tts", lambda _text: b"fake-mp3")
     generated = client.post(
         "/api/engine/routes/route-engine-test/steps/step-start/tts",
         headers=headers,
@@ -530,7 +530,7 @@ def test_ai_step_writer_updates_copy_without_changing_route_structure(tmp_path, 
     import app.main
 
     monkeypatch.setattr(
-        app.main,
+        app.main.container,
         "generate_step_copy",
         lambda *_args, **_kwargs: [
             {
@@ -574,7 +574,7 @@ def test_ai_step_writer_failure_preserves_system_copy(tmp_path, monkeypatch):
     created = client.post("/api/engine/routes", headers=headers, json=build_engine_route()).json()
     import app.main
 
-    monkeypatch.setattr(app.main, "generate_step_copy", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(app.main.container, "generate_step_copy", lambda *_args, **_kwargs: None)
     response = client.post(
         "/api/engine/routes/route-engine-test/ai-generate-voices", headers=headers
     )
@@ -625,7 +625,7 @@ def test_collection_plan_uses_ai_but_keeps_required_rule_tasks(tmp_path, monkeyp
     import app.main
 
     monkeypatch.setattr(
-        app.main,
+        app.main.container,
         "generate_collection_plan",
         lambda *_args, **_kwargs: {
             "summary": "AI 已生成采集清单。",
@@ -673,7 +673,7 @@ def test_batch_tts_preserves_custom_and_continues_after_failure(tmp_path, monkey
             raise app.main.HTTPException(status_code=502, detail="测试失败")
         return b"fake"
 
-    monkeypatch.setattr(app.main, "request_tencent_tts", fake_tts)
+    monkeypatch.setattr(app.main.container, "request_tencent_tts", fake_tts)
     response = client.post(
         "/api/engine/routes/route-engine-test/tts/batch",
         headers=headers,
@@ -703,7 +703,7 @@ def test_route_has_five_voice_moments_and_system_render_is_cached(tmp_path, monk
     import app.main
 
     calls = []
-    monkeypatch.setattr(app.main, "request_tencent_tts", lambda text: calls.append(text) or b"fake")
+    monkeypatch.setattr(app.main.container, "request_tencent_tts", lambda text: calls.append(text) or b"fake")
     payload = {
         "routeId": "route-engine-test",
         "stepId": "step-start",
@@ -884,7 +884,7 @@ def test_wechat_account_login_and_route_scope(tmp_path, monkeypatch):
     import app.main
 
     monkeypatch.setattr(
-        app.main,
+        app.main.container,
         "request_wechat_code_session",
         lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
     )
@@ -924,7 +924,7 @@ def test_wechat_login_creates_family_user_and_elder_binding(tmp_path, monkeypatc
     import app.main
 
     monkeypatch.setattr(
-        app.main,
+        app.main.container,
         "request_wechat_code_session",
         lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
     )
@@ -960,7 +960,7 @@ def test_two_wechat_families_have_isolated_elder_routes(tmp_path, monkeypatch):
     import app.main
 
     monkeypatch.setattr(
-        app.main,
+        app.main.container,
         "request_wechat_code_session",
         lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
     )
@@ -1007,7 +1007,7 @@ def test_session_user_cannot_access_unowned_legacy_route_without_family_id(tmp_p
     import app.main
 
     monkeypatch.setattr(
-        app.main,
+        app.main.container,
         "request_wechat_code_session",
         lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
     )
@@ -1034,7 +1034,7 @@ def test_family_member_cannot_manage_route(tmp_path, monkeypatch):
     import app.main
 
     monkeypatch.setattr(
-        app.main,
+        app.main.container,
         "request_wechat_code_session",
         lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
     )
@@ -1138,7 +1138,7 @@ def test_elder_wechat_binding_uses_family_member_role(tmp_path, monkeypatch):
     import app.main
 
     monkeypatch.setattr(
-        app.main,
+        app.main.container,
         "request_wechat_code_session",
         lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
     )
@@ -1184,7 +1184,7 @@ def test_emergency_contact_is_family_scoped_and_elder_readable(tmp_path, monkeyp
     import app.main
 
     monkeypatch.setattr(
-        app.main,
+        app.main.container,
         "request_wechat_code_session",
         lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
     )
@@ -1247,7 +1247,7 @@ def test_super_admin_openid_can_access_other_family_for_testing(tmp_path, monkey
     import app.main
 
     monkeypatch.setattr(
-        app.main,
+        app.main.container,
         "request_wechat_code_session",
         lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
     )
@@ -1323,6 +1323,25 @@ def test_route_advisor_falls_back_without_ai_key(tmp_path, monkeypatch):
     assert "AI路线建议暂不可用" in response.json()["reason"]
 
 
+def test_baidu_plan_summaries_are_generated_on_server(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    response = client.post(
+        "/api/engine/routes/plan-summaries",
+        headers={"Authorization": "Bearer test-token"},
+        json={
+            "origin": {"name": "富友嘉园一期", "latitude": 31.25, "longitude": 121.32},
+            "destination": {"name": "彩虹湾墨翠里", "latitude": 31.32, "longitude": 121.47},
+            "planResponse": build_baidu_walking_response(),
+        },
+    )
+    assert response.status_code == 200
+    plans = response.json()["plans"]
+    assert plans[0]["index"] == 0
+    assert plans[0]["decisionPointCount"] >= 3
+    assert plans[0]["riskPointCount"] >= 0
+    assert "右转" in plans[0]["description"]
+
+
 def test_route_advisor_falls_back_when_provider_fails(monkeypatch):
     from app.services import ai_route_advisor
 
@@ -1387,7 +1406,7 @@ def test_route_advisor_returns_structured_advice(tmp_path, monkeypatch):
     import app.main
 
     monkeypatch.setattr(
-        app.main,
+        app.main.container,
         "advise_route",
         lambda *_args, **_kwargs: {
             "recommendedPlanIndex": 1,
@@ -1417,12 +1436,12 @@ def test_route_advisor_returns_structured_advice(tmp_path, monkeypatch):
 
 
 def test_reverse_geocode_returns_named_place(tmp_path, monkeypatch):
+    monkeypatch.setenv("JIALUTONG_BAIDU_MAP_KEY", "test-key")
     client = create_client(tmp_path, monkeypatch)
     import app.main
 
-    monkeypatch.setattr(app.main, "BAIDU_MAP_KEY", "test-key")
     monkeypatch.setattr(
-        app.main,
+        app.main.container,
         "request_baidu_json",
         lambda _url: {
             "status": 0,

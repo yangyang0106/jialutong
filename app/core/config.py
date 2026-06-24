@@ -1,6 +1,7 @@
 import os
 import ssl
 from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 
 import certifi
@@ -29,7 +30,7 @@ class AppSettings:
     wechat_appid: str
     wechat_secret: str
 
-    @property
+    @cached_property
     def ssl_context(self) -> ssl.SSLContext:
         return ssl.create_default_context(cafile=certifi.where())
 
