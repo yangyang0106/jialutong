@@ -4,7 +4,8 @@ from typing import Any, Callable, Literal
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth import family_guard, route_owner_patch
-from app.schemas import EngineRoute, StepReview
+from app.schemas import BaiduRouteDraftRequest, EngineRoute, StepReview
+from app.services.route_engine.route_builder import build_family_route_from_baidu
 from app.services.voice import normalize_route_voices
 
 
@@ -67,6 +68,35 @@ def create_routes_router(
         principal: dict[str, Any] = Depends(require_token),
     ) -> dict:
         route = route_input.model_dump()
+        route.update(route_owner_patch(principal, route))
+        route["createdAt"] = route.get("createdAt") or now_iso()
+        route["publishedAt"] = ""
+        route = refresh_route_review(route)
+        with engine_routes_lock:
+            routes = load_engine_routes()
+            if route["id"] in routes:
+                raise HTTPException(status_code=409, detail="route already exists")
+            routes[route["id"]] = route
+            save_engine_routes(routes)
+        return route
+
+    @router.post("/api/engine/routes/from-baidu")
+    def create_engine_route_from_baidu(
+        request: BaiduRouteDraftRequest,
+        principal: dict[str, Any] = Depends(require_token),
+    ) -> dict:
+        _require_family_admin(principal)
+        route = build_family_route_from_baidu(
+            request.planResponse,
+            {
+                "id": request.id,
+                "name": request.name,
+                "elderSlot": request.elderSlot,
+                "origin": request.origin,
+                "destination": request.destination,
+                "routeIndex": request.routeIndex,
+            },
+        )
         route.update(route_owner_patch(principal, route))
         route["createdAt"] = route.get("createdAt") or now_iso()
         route["publishedAt"] = ""

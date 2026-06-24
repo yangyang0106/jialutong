@@ -107,6 +107,138 @@ def build_engine_route_with_id(route_id: str, name: str = "去妈妈家"):
     return route
 
 
+def baidu_location(latitude: float, longitude: float) -> dict:
+    return {"lat": latitude, "lng": longitude}
+
+
+def baidu_walking_step(
+    instruction: str,
+    turn_type: str,
+    road_name: str,
+    start: dict,
+    end: dict,
+    distance: int = 100,
+) -> dict:
+    return {
+        "instruction": instruction,
+        "turn_type": turn_type,
+        "road_name": road_name,
+        "distance": distance,
+        "start_location": start,
+        "end_location": end,
+        "path": f"{start['lng']},{start['lat']};{end['lng']},{end['lat']}",
+    }
+
+
+def build_baidu_walking_response() -> dict:
+    return {
+        "status": 0,
+        "result": {
+            "routes": [
+                {
+                    "distance": 500,
+                    "duration": 480,
+                    "steps": [
+                        baidu_walking_step(
+                            "沿丰庄路直行",
+                            "直行",
+                            "丰庄路",
+                            baidu_location(31.25, 121.32),
+                            baidu_location(31.251, 121.321),
+                        ),
+                        baidu_walking_step(
+                            "前方右转进入临洮路",
+                            "右转",
+                            "临洮路",
+                            baidu_location(31.251, 121.321),
+                            baidu_location(31.252, 121.322),
+                        ),
+                        baidu_walking_step(
+                            "继续直行到终点",
+                            "直行",
+                            "临洮路",
+                            baidu_location(31.252, 121.322),
+                            baidu_location(31.32, 121.47),
+                            300,
+                        ),
+                    ],
+                }
+            ]
+        },
+    }
+
+
+def build_baidu_transit_response(vehicle: str = "BUS", line_name: str = "887路") -> dict:
+    return {
+        "status": 0,
+        "result": {
+            "routes": [
+                {
+                    "distance": 4000,
+                    "duration": 2100,
+                    "steps": [
+                        [
+                            baidu_walking_step(
+                                "步行到临洮路站",
+                                "直行",
+                                "",
+                                baidu_location(31.25, 121.32),
+                                baidu_location(31.251, 121.321),
+                            ),
+                            {
+                                "instructions": f"乘坐{line_name}",
+                                "distance": 3800,
+                                "start_location": baidu_location(31.251, 121.321),
+                                "end_location": baidu_location(31.3, 121.45),
+                                "vehicle_info": {
+                                    "type": vehicle,
+                                    "detail": {
+                                        "uid": "line-1",
+                                        "name": line_name,
+                                        "direction": "高境路恒高路方向",
+                                        "stop_num": 6,
+                                        "departure_station": {
+                                            "name": "临洮路站",
+                                            "location": baidu_location(31.251, 121.321),
+                                        },
+                                        "arrive_station": {
+                                            "name": "江湾镇站",
+                                            "location": baidu_location(31.3, 121.45),
+                                        },
+                                    },
+                                },
+                            },
+                            baidu_walking_step(
+                                "步行到终点",
+                                "直行",
+                                "",
+                                baidu_location(31.3, 121.45),
+                                baidu_location(31.32, 121.47),
+                            ),
+                        ]
+                    ],
+                }
+            ]
+        },
+    }
+
+
+def create_route_from_baidu(client, headers, route_id: str, plan_response: dict, route_index: int = 0):
+    return client.post(
+        "/api/engine/routes/from-baidu",
+        headers=headers,
+        json={
+            "id": route_id,
+            "name": "测试路线",
+            "elderSlot": "TO_MOM",
+            "origin": {"name": "富友嘉园一期", "latitude": 31.25, "longitude": 121.32},
+            "destination": {"name": "彩虹湾墨翠里", "latitude": 31.32, "longitude": 121.47},
+            "planResponse": plan_response,
+            "routeIndex": route_index,
+        },
+    )
+
+
 def approve_and_publish_route(client, headers, route):
     created = client.post("/api/engine/routes", headers=headers, json=route)
     assert created.status_code == 200
@@ -158,6 +290,78 @@ def test_engine_route_review_and_publish(tmp_path, monkeypatch):
         json=published.json(),
     )
     assert immutable.status_code == 409
+
+
+def test_create_route_from_baidu_generates_backend_decision_points(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    headers = {"Authorization": "Bearer test-token"}
+    response = create_route_from_baidu(
+        client,
+        headers,
+        "backend-walking-test",
+        build_baidu_walking_response(),
+    )
+    assert response.status_code == 200
+    route = response.json()
+    assert route["sourceProvider"] == "BAIDU_MAP"
+    assert route["travelModes"] == ["WALKING"]
+    assert [step["type"] for step in route["steps"]] == [
+        "START",
+        "RIGHT",
+        "STRAIGHT",
+        "DESTINATION",
+    ]
+    right_turn = route["steps"][1]
+    assert right_turn["shortAction"] == "前面右转"
+    assert "右转" not in right_turn["voice"]["enterVoice"]
+    assert "右转" in right_turn["voice"]["nearVoice"]
+    assert route["steps"][-1]["location"] == {"latitude": 31.32, "longitude": 121.47}
+
+
+def test_create_route_from_baidu_handles_bus_and_subway_anchors(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    headers = {"Authorization": "Bearer test-token"}
+    bus_response = create_route_from_baidu(
+        client,
+        headers,
+        "backend-bus-test",
+        build_baidu_transit_response(),
+    )
+    assert bus_response.status_code == 200
+    bus_route = bus_response.json()
+    assert [step["type"] for step in bus_route["steps"]] == [
+        "START",
+        "STRAIGHT",
+        "BUS_ON",
+        "BUS_OFF",
+        "STRAIGHT",
+        "DESTINATION",
+    ]
+    assert bus_route["steps"][2]["transit"]["lineName"] == "887路"
+    assert bus_route["steps"][2]["transit"]["direction"] == "高境路恒高路方向"
+
+    subway_plan = build_baidu_transit_response("SUBWAY", "14号线")
+    subway_plan["result"]["routes"][0]["steps"][0][0]["instruction"] = "步行到临洮路站，从1号口进站"
+    subway_plan["result"]["routes"][0]["steps"][0][2]["instruction"] = "从3号口出站后步行到终点"
+    subway_response = create_route_from_baidu(
+        client,
+        headers,
+        "backend-subway-test",
+        subway_plan,
+    )
+    assert subway_response.status_code == 200
+    subway_route = subway_response.json()
+    assert [step["type"] for step in subway_route["steps"]] == [
+        "START",
+        "STRAIGHT",
+        "SUBWAY_IN",
+        "SUBWAY_OUT",
+        "STRAIGHT",
+        "DESTINATION",
+    ]
+    assert subway_route["steps"][2]["transit"]["accessName"] == "1号口"
+    assert subway_route["steps"][3]["transit"]["accessName"] == "3号口"
+    assert subway_route["steps"][2]["requiresFamilyReview"] is True
 
 
 def test_unpublished_route_can_be_deleted_but_published_route_cannot(tmp_path, monkeypatch):

@@ -117,6 +117,16 @@ class EngineRoute(BaseModel):
     publishedAt: str = ""
 
 
+class BaiduRouteDraftRequest(BaseModel):
+    id: str
+    name: str
+    elderSlot: Literal["TO_MOM", "TO_HOME"] | None = None
+    origin: dict[str, Any]
+    destination: dict[str, Any]
+    planResponse: dict[str, Any]
+    routeIndex: int = 0
+
+
 class StepReview(BaseModel):
     reviewStatus: Literal["APPROVED", "REJECTED"] | None = None
     reviewNote: str | None = None

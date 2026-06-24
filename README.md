@@ -34,6 +34,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8090
 - `POST /api/engine/routes/advise`：根据百度候选路线摘要生成家属路线建议
 - `POST /api/engine/places/search`：由服务端搜索百度地图地点
 - `POST /api/engine/routes`：保存完整路线草稿
+- `POST /api/engine/routes/from-baidu`：由服务端将百度原始路线转换为家路通 RouteStep 并保存草稿
 - `GET /api/engine/routes`：获取路线草稿列表
 - `GET /api/engine/routes/{route_id}`：获取完整路线
 - `PUT /api/engine/routes/{route_id}`：更新未发布路线
