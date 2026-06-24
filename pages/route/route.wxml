@@ -103,9 +103,8 @@
       <text class="help-line" wx:if="{{emergencyPhone}}">
         紧急联系人：{{emergencyRelation ? emergencyRelation + " " : ""}}{{emergencyContactName}}
       </text>
-      <button class="elder-button call-family" bindtap="callFamily">拨打家属电话</button>
       <button class="elder-button emergency-button" bindtap="callEmergency">
-        拨打{{emergencyContactName || "紧急联系人"}}
+        拨打求助联系人
       </button>
       <button wx:if="{{isOffRoute && canResume}}" class="elder-button resume" bindtap="resumeRoute">
         家属确认后继续

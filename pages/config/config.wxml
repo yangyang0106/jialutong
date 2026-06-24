@@ -1,8 +1,38 @@
 <view class="page">
   <view class="summary-card">
-    <text class="eyebrow">家属使用</text>
-    <text class="summary-title">家属配置</text>
-    <text class="summary-note">路线创建、审核和照片语音配置统一放在路线管理中。</text>
+    <text class="eyebrow">家庭安全设置</text>
+    <text class="summary-title">家路通配置</text>
+    <text class="summary-note">先确认求助联系人，再管理家人路线。</text>
+  </view>
+
+  <view class="settings-card contact-card">
+    <view class="card-heading-row">
+      <view class="card-heading-copy">
+        <text class="settings-title">求助联系人</text>
+        <text class="settings-note">老人找不到路时，优先联系这里的人。发布前请填写真实号码。</text>
+      </view>
+      <text class="{{contactReady ? 'status-pill ready-pill' : 'status-pill warning-pill'}}">
+        {{contactReady ? "已设置" : "待填写"}}
+      </text>
+    </view>
+
+    <text class="field-label">联系人姓名</text>
+    <input class="field-input" value="{{emergencyContactName}}" placeholder="例如：女儿小王" data-field="emergencyContactName" bindblur="saveContact" />
+
+    <text class="field-label">与老人的关系</text>
+    <input class="field-input" value="{{emergencyRelation}}" placeholder="例如：女儿、儿子、邻居" data-field="emergencyRelation" bindblur="saveContact" />
+
+    <text class="field-label">求助电话</text>
+    <input class="field-input" type="number" value="{{emergencyPhone}}" placeholder="请输入真实手机号" data-field="emergencyPhone" bindblur="saveContact" />
+
+    <view class="contact-warning" wx:if="{{contactWarning}}">
+      <text>{{contactWarning}}</text>
+    </view>
+  </view>
+
+  <view class="settings-card route-admin-card">
+    <text class="settings-title">路线管理</text>
+    <text class="settings-note">路线创建、审核、照片和语音配置都放在这里。</text>
     <view class="account-panel" wx:if="{{authUser}}">
       <text class="account-label">当前家庭</text>
       <text class="account-name">{{authUser.familyName}}</text>
@@ -25,18 +55,5 @@
       <button class="login-button" bindtap="openFamilyLogin">登录或创建账号</button>
     </view>
     <button class="route-create-entry" bindtap="openRouteManager">进入路线管理</button>
-  </view>
-
-  <view class="settings-card">
-    <text class="settings-title">求助联系人</text>
-    <text class="settings-note">这里填写老人找不到路时可以联系的人。发布前不要使用测试号码。</text>
-    <text class="field-label">家属电话</text>
-    <input class="field-input" type="number" value="{{familyPhone}}" data-field="familyPhone" bindblur="savePhone" />
-    <text class="field-label">紧急联系人姓名</text>
-    <input class="field-input" value="{{emergencyContactName}}" placeholder="例如：女儿小王" data-field="emergencyContactName" bindblur="savePhone" />
-    <text class="field-label">与老人的关系</text>
-    <input class="field-input" value="{{emergencyRelation}}" placeholder="例如：女儿、儿子、邻居" data-field="emergencyRelation" bindblur="savePhone" />
-    <text class="field-label">紧急求助电话</text>
-    <input class="field-input" type="number" value="{{emergencyPhone}}" data-field="emergencyPhone" bindblur="savePhone" />
   </view>
 </view>

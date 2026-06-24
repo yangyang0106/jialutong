@@ -31,6 +31,57 @@
   line-height: 1.5;
 }
 
+.card-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.card-heading-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.status-pill {
+  flex-shrink: 0;
+  padding: 10rpx 18rpx;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-label);
+}
+
+.ready-pill {
+  background: #fff2dc;
+  color: #9a5c13;
+}
+
+.warning-pill {
+  background: #ffe9e2;
+  color: #a53325;
+}
+
+.contact-card {
+  border-color: #ffd0a6;
+  background: #fffdfb;
+}
+
+.contact-warning {
+  margin-top: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  background: #fff2dc;
+  color: #8a5a24;
+  font-size: var(--font-sm);
+  font-weight: var(--weight-body);
+  line-height: 1.45;
+}
+
+.route-admin-card {
+  background: var(--color-surface);
+}
+
 .field-label {
   margin-top: var(--space-md);
   margin-bottom: var(--space-xs);

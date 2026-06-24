@@ -683,19 +683,6 @@ Page({
     this.setData({ helpVisible: false });
   },
 
-  callFamily() {
-    const phone = app.globalData.familyPhone;
-    if (!phone) {
-      wx.showModal({
-        title: "未设置家属电话",
-        content: "请让家人先填写联系电话。",
-        showCancel: false
-      });
-      return;
-    }
-    wx.makePhoneCall({ phoneNumber: phone });
-  },
-
   callEmergency() {
     const phone = app.globalData.emergencyPhone;
     if (!phone) {

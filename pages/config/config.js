@@ -14,15 +14,19 @@ Page({
     emergencyPhone: "",
     emergencyContactName: "",
     emergencyRelation: "",
+    contactReady: false,
+    contactWarning: "",
     authUser: null,
     elders: []
   },
 
   onShow() {
+    const settings = getSettings();
     this.setData({
-      ...getSettings(),
+      ...settings,
       authUser: (getAuthState() || {}).user || null
     });
+    this.refreshContactStatus(settings);
     if (this.data.authUser) {
       listBoundElders()
         .then((elders) => this.setData({ elders }))
@@ -32,17 +36,41 @@ Page({
     }
   },
 
-  savePhone(event) {
+  saveContact(event) {
     const field = event.currentTarget.dataset.field;
     const value = String(event.detail.value || "").trim();
     if (!field) return;
-    const settings = saveSettings({ [field]: value });
+    const patch = { [field]: value };
+    if (field === "emergencyPhone") {
+      patch.familyPhone = value;
+    }
+    const settings = saveSettings(patch);
     app.globalData.familyPhone = settings.familyPhone;
     app.globalData.emergencyPhone = settings.emergencyPhone;
     app.globalData.emergencyContactName = settings.emergencyContactName;
     app.globalData.emergencyRelation = settings.emergencyRelation;
     this.setData(settings);
+    this.refreshContactStatus(settings);
     wx.showToast({ title: "已保存" });
+  },
+
+  refreshContactStatus(settings = getSettings()) {
+    const phone = String(settings.emergencyPhone || "").trim();
+    const hasName = Boolean(String(settings.emergencyContactName || "").trim());
+    const hasRelation = Boolean(String(settings.emergencyRelation || "").trim());
+    const hasValidPhone = /^1\d{10}$/.test(phone);
+    let contactWarning = "";
+    if (!phone) {
+      contactWarning = "请填写真实求助电话。";
+    } else if (!hasValidPhone) {
+      contactWarning = "求助电话看起来不完整，请填写 11 位手机号。";
+    } else if (!hasName || !hasRelation) {
+      contactWarning = "建议补充联系人姓名和关系，老人求助时更清楚。";
+    }
+    this.setData({
+      contactReady: hasValidPhone && hasName && hasRelation,
+      contactWarning
+    });
   },
 
   openRouteManager() {

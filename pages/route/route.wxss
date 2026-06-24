@@ -285,8 +285,7 @@
   box-shadow: inset 0 0 0 4rpx #f3c89e;
 }
 
-.next-button,
-.call-family {
+.next-button {
   background: var(--color-primary);
   color: var(--color-surface);
 }
