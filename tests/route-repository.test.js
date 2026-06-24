@@ -107,6 +107,25 @@ test("route repository requests structured route advice from the server", async 
   assert.equal(calls[0].method, "POST");
 });
 
+test("route repository asks server to summarize Baidu plans", async () => {
+  const calls = [];
+  const repository = loadRepositoryWithMock((options) => {
+    calls.push(options);
+    options.success({
+      statusCode: 200,
+      data: { plans: [{ index: 0, decisionPointCount: 3 }] }
+    });
+  });
+  const response = await repository.summarizeRoutePlansFromBaidu({
+    origin: { name: "起点", latitude: 31.25, longitude: 121.32 },
+    destination: { name: "终点", latitude: 31.3, longitude: 121.45 },
+    planResponse: { result: { routes: [] } }
+  });
+  assert.equal(response.plans[0].decisionPointCount, 3);
+  assert.match(calls[0].url, /api\/engine\/routes\/plan-summaries$/);
+  assert.equal(calls[0].method, "POST");
+});
+
 test("route repository searches places through the server", async () => {
   const calls = [];
   const repository = loadRepositoryWithMock((options) => {

@@ -53,6 +53,10 @@ function adviseRoutePlans(input) {
   return request("/api/engine/routes/advise", "POST", input);
 }
 
+function summarizeRoutePlansFromBaidu(input) {
+  return request("/api/engine/routes/plan-summaries", "POST", input);
+}
+
 function searchPlaces(keyword, region = "上海") {
   return request("/api/engine/places/search", "POST", { keyword, region });
 }
@@ -176,6 +180,7 @@ module.exports = {
   reverseGeocode,
   saveRouteDraft,
   searchPlaces,
+  summarizeRoutePlansFromBaidu,
   updateRouteDraft,
   updateRouteHelpEvent
 };

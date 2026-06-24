@@ -10,6 +10,12 @@
 POST /api/engine/routes/from-baidu
 ```
 
+AI 路线顾问使用的候选路线摘要也由服务端生成：
+
+```text
+POST /api/engine/routes/plan-summaries
+```
+
 ## 转换流程
 
 ```text
@@ -18,7 +24,7 @@ POST /api/engine/routes/from-baidu
 → 服务端从百度响应生成 RouteStep
 → 服务端保存草稿、审核阻断和发布状态
 → elder-route-adapter 转为家人导航页运行数据
-→ elder-route-loader 远程读取并缓存，固定 JSON 断网兜底
+→ elder-route-loader 远程读取并缓存，断网时优先使用上次缓存
 ```
 
 > 架构约束：新功能不要继续扩大小程序端路线生成规则。需要新增路线解析能力时，放到服务端，再由小程序调用接口。
@@ -38,7 +44,8 @@ POST /api/engine/routes/from-baidu
 
 ## 入口
 
-- 从百度响应构建路线：`buildFamilyRouteFromBaidu`
+- 从百度响应构建正式路线：服务端 `POST /api/engine/routes/from-baidu`
+- 从百度响应生成候选摘要：服务端 `POST /api/engine/routes/plan-summaries`
 - 创建并保存路线草稿：`createAndSaveRouteDraft`
 - 家属确认步骤：调用路线步骤审核接口
 - 发布路线：调用路线发布接口
