@@ -1,18 +1,15 @@
 import json
-import os
-import ssl
 from datetime import UTC, datetime
-from pathlib import Path
 from threading import Lock
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
-import certifi
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
-from dotenv import load_dotenv
 from app.auth import AuthStore
+from app.core.config import load_settings
+from app.repositories.json_repository import JsonAppRepository
 from app.routers.ai import create_ai_router
 from app.routers.auth import create_auth_router
 from app.routers.files import create_files_router
@@ -31,34 +28,24 @@ from app.services import baidu_map
 from app.services.route_review import refresh_route_review as refresh_route_review_with_clock
 from app.services.route_review_center import build_route_review_center
 from app.services import tencent_tts
-from app.storage import load_json, load_routes as load_routes_file, save_json, save_routes as save_routes_file
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
-DATA_DIR = Path(os.getenv("JIALUTONG_DATA_DIR", BASE_DIR / "data"))
-UPLOAD_DIR = DATA_DIR / "uploads"
-ROUTES_FILE = DATA_DIR / "routes.json"
-ENGINE_ROUTES_FILE = DATA_DIR / "engine-routes.json"
-TRIP_RESULTS_FILE = DATA_DIR / "trip-results.json"
-AUTH_DB_FILE = DATA_DIR / "auth.db"
-PUBLIC_BASE_URL = os.getenv("JIALUTONG_PUBLIC_BASE_URL", "http://127.0.0.1:8090").rstrip("/")
-API_TOKEN = os.getenv("JIALUTONG_UPLOAD_TOKEN", "")
-BAIDU_MAP_KEY = os.getenv("JIALUTONG_BAIDU_MAP_KEY", "")
-TENCENT_SECRET_ID = os.getenv("JIALUTONG_TENCENT_SECRET_ID", "")
-TENCENT_SECRET_KEY = os.getenv("JIALUTONG_TENCENT_SECRET_KEY", "")
-TENCENT_TTS_REGION = os.getenv("JIALUTONG_TENCENT_TTS_REGION", "ap-shanghai")
-TENCENT_TTS_VOICE_TYPE = int(os.getenv("JIALUTONG_TENCENT_TTS_VOICE_TYPE", "101001"))
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
-DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
-WECHAT_APPID = os.getenv("JIALUTONG_WECHAT_APPID", "")
-WECHAT_SECRET = os.getenv("JIALUTONG_WECHAT_SECRET", "")
-HTTPS_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+settings = load_settings()
+DATA_DIR = settings.data_dir
+UPLOAD_DIR = settings.upload_dir
+PUBLIC_BASE_URL = settings.public_base_url
+BAIDU_MAP_KEY = settings.baidu_map_key
+HTTPS_CONTEXT = settings.ssl_context
+
+repository = JsonAppRepository(
+    route_config_file=settings.routes_file,
+    engine_routes_file=settings.engine_routes_file,
+    trip_results_file=settings.trip_results_file,
+)
 
 routes_lock = Lock()
 engine_routes_lock = Lock()
 trip_results_lock = Lock()
-auth_store = AuthStore(AUTH_DB_FILE, API_TOKEN)
+auth_store = AuthStore(settings.auth_db_file, settings.upload_token)
 
 
 def require_token(authorization: str | None = Header(default=None)) -> dict[str, Any]:
@@ -66,27 +53,27 @@ def require_token(authorization: str | None = Header(default=None)) -> dict[str,
 
 
 def load_routes() -> dict:
-    return load_routes_file(ROUTES_FILE)
+    return repository.load_route_configs()
 
 
 def save_routes(routes: dict) -> None:
-    save_routes_file(ROUTES_FILE, routes)
+    repository.save_route_configs(routes)
 
 
 def load_engine_routes() -> dict[str, Any]:
-    return load_json(ENGINE_ROUTES_FILE, {})
+    return repository.load_engine_routes()
 
 
 def save_engine_routes(routes: dict[str, Any]) -> None:
-    save_json(ENGINE_ROUTES_FILE, routes)
+    repository.save_engine_routes(routes)
 
 
 def load_trip_results() -> list[dict[str, Any]]:
-    return load_json(TRIP_RESULTS_FILE, [])
+    return repository.load_trip_results()
 
 
 def save_trip_results(results: list[dict[str, Any]]) -> None:
-    save_json(TRIP_RESULTS_FILE, results)
+    repository.save_trip_results(results)
 
 
 def build_step_result_history(route_id: str) -> dict[str, dict[str, int]]:
@@ -112,10 +99,10 @@ def now_iso() -> str:
 def request_tencent_tts(text: str) -> bytes:
     return tencent_tts.request_tencent_tts(
         text,
-        secret_id=TENCENT_SECRET_ID,
-        secret_key=TENCENT_SECRET_KEY,
-        region=TENCENT_TTS_REGION,
-        voice_type=TENCENT_TTS_VOICE_TYPE,
+        secret_id=settings.tencent_secret_id,
+        secret_key=settings.tencent_secret_key,
+        region=settings.tencent_tts_region,
+        voice_type=settings.tencent_tts_voice_type,
         ssl_context=HTTPS_CONTEXT,
     )
 
@@ -166,12 +153,12 @@ def request_baidu_json(url: str) -> dict[str, Any]:
 
 
 def request_wechat_code_session(code: str) -> dict[str, Any]:
-    if not WECHAT_APPID or not WECHAT_SECRET:
+    if not settings.wechat_appid or not settings.wechat_secret:
         raise HTTPException(status_code=503, detail="微信登录尚未配置，请联系管理员")
     url = (
         "https://api.weixin.qq.com/sns/jscode2session"
-        f"?appid={WECHAT_APPID}"
-        f"&secret={WECHAT_SECRET}"
+        f"?appid={settings.wechat_appid}"
+        f"&secret={settings.wechat_secret}"
         f"&js_code={code}"
         "&grant_type=authorization_code"
     )
@@ -216,18 +203,18 @@ def advise_engine_routes(advice_request: RouteAdviceRequest) -> dict:
         advice_request.originName,
         advice_request.destinationName,
         [plan.model_dump() for plan in advice_request.plans],
-        api_key=DEEPSEEK_API_KEY,
-        base_url=DEEPSEEK_BASE_URL,
-        model=DEEPSEEK_MODEL,
+        api_key=settings.deepseek_api_key,
+        base_url=settings.deepseek_base_url,
+        model=settings.deepseek_model,
         ssl_context=HTTPS_CONTEXT,
     )
 
 
 def ai_config() -> dict[str, Any]:
     return {
-        "api_key": DEEPSEEK_API_KEY,
-        "base_url": DEEPSEEK_BASE_URL,
-        "model": DEEPSEEK_MODEL,
+        "api_key": settings.deepseek_api_key,
+        "base_url": settings.deepseek_base_url,
+        "model": settings.deepseek_model,
         "ssl_context": HTTPS_CONTEXT,
     }
 
