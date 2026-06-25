@@ -147,6 +147,11 @@
   padding-bottom: 0;
 }
 
+.help-button.help-holding {
+  background: #b8322c;
+  box-shadow: inset 0 0 0 8rpx #ffd0cc;
+}
+
 .config-button {
   display: flex;
   align-items: center;
@@ -161,6 +166,73 @@
   color: #6f4b2d;
   font-size: var(--font-base);
   font-weight: var(--weight-body);
+}
+
+/* 未登录访客卡片 */
+.guest-card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-xl) var(--space-lg);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.guest-title {
+  font-size: var(--font-xl);
+  font-weight: var(--weight-heading);
+  color: var(--color-text-primary);
+}
+
+.guest-note {
+  margin-top: var(--space-xs);
+  font-size: var(--font-base);
+  color: var(--color-text-secondary);
+}
+
+.guest-family-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 112rpx;
+  margin-top: var(--space-xl);
+  border-radius: var(--radius-lg);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: var(--font-xl);
+  font-weight: var(--weight-heading);
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.guest-elder-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 112rpx;
+  margin-top: var(--space-md);
+  border-radius: var(--radius-lg);
+  background: #fff5eb;
+  color: #6f4b2d;
+  font-size: var(--font-xl);
+  font-weight: var(--weight-heading);
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* 加载状态 */
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl) var(--space-lg);
+}
+
+.loading-text {
+  font-size: var(--font-base);
+  color: var(--color-text-secondary);
 }
 
 /* 空状态 */

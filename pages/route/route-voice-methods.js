@@ -7,7 +7,14 @@ const {
   resolveStepVoice,
   VOICE_TIMING
 } = require("../../utils/voice-companion");
-const { SECOND_AUDIO_DELAY } = require("./route-presenter");
+const {
+  LOCATION_REFRESH_INTERVAL,
+  SECOND_AUDIO_DELAY
+} = require("./route-presenter");
+const {
+  createExecutionState,
+  resetForStep
+} = require("../../utils/route-executor");
 
 module.exports = {
   bindAudioEvents() {

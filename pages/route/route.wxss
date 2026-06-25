@@ -64,7 +64,8 @@
 .target-card {
   position: relative;
   overflow: hidden;
-  min-height: 55vh;
+  min-height: 42vh;
+  max-height: 620rpx;
   border: 3rpx solid #f1e4d7;
   border-radius: var(--radius-lg);
   background: #fff8f1;
@@ -74,8 +75,9 @@
 .target-photo,
 .target-placeholder {
   width: 100%;
-  height: 55vh;
-  min-height: 590rpx;
+  height: 42vh;
+  min-height: 420rpx;
+  max-height: 620rpx;
 }
 
 .target-placeholder {
@@ -99,7 +101,7 @@
 }
 
 .placeholder-copy {
-  color: #76675a;
+  color: #5a4d40;
   font-size: var(--font-md);
   font-weight: var(--weight-body);
 }
@@ -134,7 +136,7 @@
 }
 
 .task-label {
-  color: #8f725c;
+  color: #6b4d36;
   font-size: var(--font-base);
   font-weight: var(--weight-body);
 }
@@ -240,9 +242,14 @@
   padding-bottom: 0;
   border-radius: var(--radius-md);
   background: var(--color-surface);
-  color: #6a5544;
+  color: #533f32;
   font-size: var(--font-md);
   font-weight: var(--weight-body);
+}
+
+.always-not-found {
+  background: #fff8f1;
+  box-shadow: inset 0 0 0 3rpx #eadbcd;
 }
 
 .stop-warning,
@@ -273,10 +280,12 @@
   width: 100%;
   min-height: 120rpx;
   border-radius: var(--radius-md);
-  font-size: 39rpx;
+  font-size: 42rpx;
   font-weight: var(--weight-heading);
   padding-top: 0;
   padding-bottom: 0;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .voice-button {
@@ -302,6 +311,17 @@
 
 .help-button {
   grid-column: 1 / -1;
+  min-height: 132rpx;
+  font-size: 48rpx;
+}
+
+.end-nav-button {
+  grid-column: 1 / -1;
+  min-height: 88rpx;
+  background: #f3e5d7;
+  color: #533f32;
+  font-size: var(--font-md);
+  font-weight: var(--weight-body);
 }
 
 .help-holding {
@@ -339,22 +359,54 @@
 .help-title {
   margin-bottom: var(--space-xs);
   color: #bd3e38;
-  font-size: 58rpx;
+  font-size: 64rpx;
   font-weight: var(--weight-heading);
+  text-align: center;
+}
+
+.help-large-line {
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: #ffe7e4;
+  color: #8f2424;
+  font-size: 50rpx;
+  font-weight: var(--weight-heading);
+  line-height: 1.35;
   text-align: center;
 }
 
 .help-line {
   color: #292522;
-  font-size: 38rpx;
+  font-size: 42rpx;
   font-weight: var(--weight-heading);
   line-height: 1.5;
 }
 
+.help-phone-box {
+  margin-top: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  background: #ffe7e4;
+  text-align: center;
+}
+
+.help-phone-number {
+  color: #8f2424;
+  font-size: 72rpx;
+  font-weight: var(--weight-heading);
+  letter-spacing: 8rpx;
+  line-height: 1.4;
+}
+
 .resume,
+.self-resume,
 .close-help {
   background: #72645a;
   color: var(--color-surface);
+}
+
+.self-resume {
+  background: #4c752f;
 }
 
 .simulator-panel {

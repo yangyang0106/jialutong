@@ -21,6 +21,7 @@
         </view>
       </view>
       <text class="health-copy">FOUND {{center.foundCount}} 次，NOT_FOUND {{center.notFoundCount}} 次，HELP {{center.helpCount}} 次。</text>
+      <text class="health-copy">已到达 {{center.arrivedCount || 0}} 次。</text>
       <button class="ai-button" loading="{{analyzing}}" disabled="{{analyzing}}" bindtap="analyzeTrip">AI分析怎么优化</button>
     </view>
 
@@ -37,6 +38,18 @@
       </view>
     </view>
 
+
+    <view class="section-card">
+      <text class="section-title">到达记录</text>
+      <text wx:if="{{!arrivalEvents.length}}" class="empty-copy">暂无到达记录。老人完成路线后，这里会显示到达时间。</text>
+      <view wx:for="{{arrivalEvents}}" wx:key="id" class="arrival-card">
+        <view class="help-head">
+          <text class="help-title">第 {{item.stepNo}} 步 · 已到达</text>
+          <text class="help-time">{{item.occurredAt}}</text>
+        </view>
+        <text class="help-copy">{{item.contactText}}</text>
+      </view>
+    </view>
 
     <view class="section-card">
       <text class="section-title">求助记录</text>

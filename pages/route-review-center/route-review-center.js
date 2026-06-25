@@ -1,6 +1,7 @@
 const {
   analyzeRouteTrip,
   getRouteReviewCenter,
+  listRouteArrivalEvents,
   listRouteHelpEvents,
   updateRouteHelpEvent
 } = require("../../utils/route-api");
@@ -32,6 +33,16 @@ function enrichHelpEvent(event) {
     helpStatusText: HELP_STATUS_LABELS[event.helpStatus] || event.helpStatus || "等待处理",
     contactText: contact || "未记录联系人",
     reasonText: event.helpReason || "老人主动求助"
+  };
+}
+
+function enrichArrivalEvent(event) {
+  const contact = [event.emergencyRelation, event.emergencyContactName, event.emergencyPhone]
+    .filter(Boolean)
+    .join(" ");
+  return {
+    ...event,
+    contactText: contact || "未记录联系人"
   };
 }
 
@@ -67,6 +78,7 @@ Page({
     analyzing: false,
     center: null,
     analysis: null,
+    arrivalEvents: [],
     helpEvents: [],
     resolvingHelpId: ""
   },
@@ -82,6 +94,7 @@ Page({
       .then((center) => {
         this.setData({ center: enrichCenter(center), loading: false });
         wx.setNavigationBarTitle({ title: "路线复盘" });
+        this.loadArrivalEvents();
         this.loadHelpEvents();
       })
       .catch((error) => {
@@ -94,6 +107,16 @@ Page({
       });
   },
 
+  loadArrivalEvents() {
+    listRouteArrivalEvents(this.routeId)
+      .then((result) => {
+        const arrivalEvents = (result.events || []).map(enrichArrivalEvent);
+        this.setData({ arrivalEvents });
+      })
+      .catch(() => {
+        this.setData({ arrivalEvents: [] });
+      });
+  },
 
   loadHelpEvents() {
     listRouteHelpEvents(this.routeId)

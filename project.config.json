@@ -55,10 +55,6 @@
         "type": "file"
       },
       {
-        "value": "config/upload.local.js",
-        "type": "file"
-      },
-      {
         "value": "config/upload.local.example.js",
         "type": "file"
       },

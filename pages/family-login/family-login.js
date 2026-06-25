@@ -47,11 +47,13 @@ Page({
       .then(() => {
         wx.showToast({ title: "已登录" });
         const redirect = this.data.redirect;
-        if (redirect) {
-          wx.redirectTo({ url: redirect });
-          return;
-        }
-        wx.navigateBack({ fail: () => wx.redirectTo({ url: "/pages/config/config" }) });
+        setTimeout(() => {
+          if (redirect) {
+            wx.redirectTo({ url: redirect });
+            return;
+          }
+          wx.reLaunch({ url: "/pages/index/index" });
+        }, 500);
       })
       .catch((error) => {
         wx.showModal({

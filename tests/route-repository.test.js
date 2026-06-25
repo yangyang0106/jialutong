@@ -3,7 +3,6 @@ const test = require("node:test");
 
 const uploadConfig = require("../config/upload");
 uploadConfig.apiBaseUrl = "https://route.example.com";
-uploadConfig.uploadToken = "test-token";
 
 function loadRepositoryWithMock(responder, storage = null) {
   global.wx = {
@@ -304,19 +303,30 @@ test("route repository lists and resolves help events", async () => {
   assert.deepEqual(calls[0].data, { helpStatus: "RESOLVED", handledNote: "已处理" });
 });
 
+test("route repository lists arrival events", async () => {
+  const calls = [];
+  const repository = loadRepositoryWithMock((options) => {
+    calls.push(options);
+    options.success({ statusCode: 200, data: { events: [] } });
+  });
+  await repository.listRouteArrivalEvents("route-1");
+  assert.equal(calls[0].method, "GET");
+  assert.match(calls[0].url, /api\/engine\/routes\/route-1\/arrival-events$/);
+});
 
-test("route repository reads the published route for an elderly home button", async () => {
+
+test("route repository lists published routes for elderly home slots", async () => {
   const calls = [];
   const repository = loadRepositoryWithMock((options) => {
     calls.push(options);
     options.success({
       statusCode: 200,
-      data: { id: "published-route", elderSlot: "TO_MOM", status: "PUBLISHED" }
+      data: { routes: [{ id: "published-route", elderSlot: "TO_MOM", status: "PUBLISHED" }] }
     });
   });
-  const route = await repository.getPublishedElderRoute("TO_MOM");
-  assert.equal(route.id, "published-route");
-  assert.match(calls[0].url, /api\/engine\/elder-routes\/TO_MOM$/);
+  const result = await repository.listRouteDrafts("PUBLISHED");
+  assert.equal(result.routes[0].id, "published-route");
+  assert.match(calls[0].url, /api\/engine\/routes\?status=PUBLISHED$/);
   assert.equal(calls[0].method, "GET");
 });
 

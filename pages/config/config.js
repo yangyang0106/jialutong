@@ -1,4 +1,5 @@
 const { getSettings } = require("../../utils/settings");
+const { buildCode39Bars } = require("../../utils/code39");
 const {
   createElderBindCode,
   getAuthState,
@@ -16,7 +17,8 @@ Page({
     contactWarning: "",
     contactSummary: "老人找不到路时，优先联系这里的人。发布前请填写真实号码。",
     authUser: null,
-    elders: []
+    elders: [],
+    bindCodePanel: null
   },
 
   onShow() {
@@ -79,12 +81,15 @@ Page({
     if (!elderId || !elder) return;
     createElderBindCode(elderId, "本人")
       .then((result) => {
-        wx.showModal({
-          title: `${elder.name}的绑定码`,
-          content: `请在老人手机打开家路通，选择老人绑定，输入：${result.code}。绑定码30分钟内有效。`,
-          showCancel: false,
-          confirmText: "知道了"
+        this.setData({
+          bindCodePanel: {
+            elderName: elder.name,
+            code: result.code,
+            bars: buildCode39Bars(result.code),
+            expiresAt: result.expiresAt
+          }
         });
+        wx.showToast({ title: "绑定码已生成", icon: "none" });
       })
       .catch((error) => {
         wx.showModal({
@@ -93,6 +98,10 @@ Page({
           showCancel: false
         });
       });
+  },
+
+  closeBindCodePanel() {
+    this.setData({ bindCodePanel: null });
   },
 
   logoutFamily() {

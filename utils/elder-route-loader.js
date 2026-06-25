@@ -1,51 +1,64 @@
-const { getRouteById } = require("../data/routes");
-const uploadConfig = require("../config/upload");
 const { adaptPublishedRoute } = require("./elder-route-adapter");
-const { getPublishedElderRoute } = require("./route-api");
-
-const CACHE_KEY = "publishedElderRoutes";
-const ROUTE_ID_SLOTS = Object.freeze({
-  "to-mom": "TO_MOM",
-  "to-home": "TO_HOME"
-});
-
-function getCache() {
-  return wx.getStorageSync(CACHE_KEY) || {};
-}
-
-function getCachedOrFixedElderRoute(routeId) {
-  const cached = getCache()[routeId];
-  if (cached) return cached;
-  if (uploadConfig.enableLocalDemoRoutes) return getRouteById(routeId);
-  return undefined;
-}
+const { getRouteDraft, listRouteDrafts } = require("./route-api");
+const {
+  ELDER_ROUTE_SLOTS,
+  cachePublishedRouteForSlot,
+  getCachedPublishedRouteById,
+  getCachedPublishedRouteBySlot,
+  isElderRouteSlot,
+  pickLatestPublishedRouteForSlot
+} = require("./elder-route-slots");
 
 function cachePublishedElderRoute(route) {
-  const slotRouteId = route && ROUTE_ID_SLOTS[route.slotRouteId]
-    ? route.slotRouteId
-    : Object.keys(ROUTE_ID_SLOTS).find((routeId) => ROUTE_ID_SLOTS[routeId] === route.elderSlot);
-  if (!route || !slotRouteId) return route;
-  const cache = getCache();
-  cache[slotRouteId] = route;
-  wx.setStorageSync(CACHE_KEY, cache);
-  return route;
+  return cachePublishedRouteForSlot(route);
 }
 
 function loadElderRoute(routeId) {
-  const slot = ROUTE_ID_SLOTS[routeId];
-  if (!slot) return Promise.resolve(getRouteById(routeId));
-
-  return getPublishedElderRoute(slot)
+  if (isElderRouteSlot(routeId)) {
+    return Promise.reject(new Error("首页槽位不能作为真实路线 ID 使用"));
+  }
+  return getRouteDraft(routeId)
     .then((remoteRoute) => {
-      const route = adaptPublishedRoute(remoteRoute, slot);
-      if (!route) return getCachedOrFixedElderRoute(routeId);
+      const route = adaptPublishedRoute(remoteRoute, remoteRoute && remoteRoute.elderSlot);
+      if (!route) throw new Error("路线尚未发布");
       return cachePublishedElderRoute(route);
     })
-    .catch(() => getCachedOrFixedElderRoute(routeId));
+    .catch((error) => {
+      const cached = getCachedPublishedRouteById(routeId);
+      if (cached) return cached;
+      throw error;
+    });
+}
+
+function loadElderRouteSlot(slot) {
+  if (!isElderRouteSlot(slot)) {
+    return Promise.reject(new Error("未知首页路线槽位"));
+  }
+  return listRouteDrafts("PUBLISHED")
+    .then(({ routes }) => {
+      const remoteRoute = pickLatestPublishedRouteForSlot(routes, slot);
+      const route = adaptPublishedRoute(remoteRoute, slot);
+      if (!route) return getCachedPublishedRouteBySlot(slot);
+      return cachePublishedElderRoute(route);
+    })
+    .catch(() => getCachedPublishedRouteBySlot(slot));
+}
+
+function listPublishedElderSlotRoutes() {
+  return listRouteDrafts("PUBLISHED")
+    .then(({ routes }) => ELDER_ROUTE_SLOTS
+      .map((slot) => adaptPublishedRoute(pickLatestPublishedRouteForSlot(routes, slot), slot))
+      .filter(Boolean)
+      .map(cachePublishedElderRoute))
+    .catch(() => ELDER_ROUTE_SLOTS
+      .map(getCachedPublishedRouteBySlot)
+      .filter(Boolean));
 }
 
 module.exports = {
   cachePublishedElderRoute,
-  getCachedOrFixedElderRoute,
-  loadElderRoute
+  getCachedPublishedRouteBySlot,
+  listPublishedElderSlotRoutes,
+  loadElderRoute,
+  loadElderRouteSlot
 };

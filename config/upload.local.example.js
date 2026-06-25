@@ -1,6 +1,7 @@
 module.exports = {
-  apiBaseUrl: "https://jialutong.cloud",
-  uploadToken: "replace-with-server-upload-token",
-  // 仅本地演示或离线开发时打开。生产环境必须保持 false。
-  enableLocalDemoRoutes: false
+  // 本地开发：指向本地后端服务
+  apiBaseUrl: "http://127.0.0.1:8090",
+  uploadUrl: "http://127.0.0.1:8090/api/files"
+  // 生产环境：指向部署域名
+  // apiBaseUrl: "https://jialutong.cloud"
 };

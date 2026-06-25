@@ -18,7 +18,7 @@
     <image
       wx:if="{{currentStep.imageUrl && !imageUnavailable}}"
       class="target-photo"
-      src="{{currentStep.imageUrl}}"
+      src="{{currentStep.displayImageUrl || currentStep.imageUrl}}"
       mode="aspectFill"
       binderror="handleImageError"
     />
@@ -39,7 +39,10 @@
     <text wx:if="{{audioStatusText}}" class="audio-status">{{audioStatusText}}</text>
     <text wx:if="{{riskReminder}}" class="risk-reminder">{{riskReminder}}</text>
     <text wx:if="{{locationWarning}}" class="stop-warning">{{locationWarning}}</text>
-    <text class="help-hint">找到后，点“我找到了”</text>
+    <text class="help-hint">找到后，点“找到了，走下一步”</text>
+    <button wx:if="{{!isNearby}}" class="not-found-button always-not-found" bindtap="notFoundYet">
+      我还没找到
+    </button>
     <view wx:if="{{audioFallback}}" class="voice-fallback">
       <text>{{currentStep.voiceText}}</text>
       <text class="fallback-hint">请点击“再听一遍”，查看当前提示</text>
@@ -53,7 +56,7 @@
 
   <view wx:if="{{isFinished}}" class="finished-card">
     <text class="finished-title">已经到达</text>
-    <text class="finished-desc">请在这里等家人</text>
+    <text class="finished-desc">已告诉系统，请在这里等家人</text>
   </view>
 
   <view wx:if="{{simulatorEnabled && !isFinished}}" class="simulator-panel">
@@ -78,7 +81,7 @@
       {{audioButtonText}}
     </button>
     <button wx:if="{{!isFinished}}" class="elder-button next-button" bindtap="nextStep">
-      我找到了，下一步
+      找到了，走下一步
     </button>
     <button
       wx:if="{{!isFinished}}"
@@ -87,7 +90,13 @@
       bindtouchend="cancelHelpHold"
       bindtouchcancel="cancelHelpHold"
     >
-      {{helpHolding ? "正在求助，继续按住" : "长按 3 秒求助"}}
+      {{helpHolding ? "继续按住3秒求助" : "按住3秒 · 求助家人"}}
+    </button>
+    <button wx:if="{{!isFinished}}" class="elder-button end-nav-button" bindtap="endNavigation">
+      结束导航
+    </button>
+    <button wx:if="{{isFinished && emergencyPhone}}" class="elder-button emergency-button" bindtap="callFamilyAfterArrival">
+      打电话告诉家人
     </button>
     <button wx:if="{{isFinished}}" class="elder-button next-button finished-button" bindtap="backHome">
       返回首页
@@ -97,17 +106,24 @@
   <view wx:if="{{helpVisible}}" class="help-overlay">
     <view class="help-card">
       <text wx:if="{{isOffRoute}}" class="stop-title">请停下</text>
-      <text wx:else class="help-title">请帮我联系家人</text>
+      <text wx:else class="help-title">我需要帮助</text>
+      <text class="help-large-line">请联系我的家人</text>
       <text class="help-line">我要去：{{route.name}}</text>
-      <text class="help-line">我要找：{{currentTask}}</text>
+      <text class="help-line">现在要找：{{currentTask}}</text>
       <text class="help-line" wx:if="{{emergencyPhone}}">
         紧急联系人：{{emergencyRelation ? emergencyRelation + " " : ""}}{{emergencyContactName}}
       </text>
+      <view wx:if="{{emergencyPhone}}" class="help-phone-box">
+        <text class="help-phone-number">{{emergencyPhone}}</text>
+      </view>
       <button class="elder-button emergency-button" bindtap="callEmergency">
         拨打求助联系人
       </button>
       <button wx:if="{{isOffRoute && canResume}}" class="elder-button resume" bindtap="resumeRoute">
         家属确认后继续
+      </button>
+      <button wx:if="{{isOffRoute}}" class="elder-button self-resume" bindtap="selfResumeRoute">
+        重新开始这一步
       </button>
       <button wx:else class="elder-button close-help" bindtap="closeHelp">返回路线</button>
     </view>

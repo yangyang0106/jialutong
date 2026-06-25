@@ -18,11 +18,5 @@ App({
     } catch (error) {
       console.warn("读取设置失败，使用默认联系电话", error);
     }
-    if (wx.setKeepScreenOn) {
-      wx.setKeepScreenOn({
-        keepScreenOn: true,
-        fail: (error) => console.warn("保持屏幕常亮失败", error)
-      });
-    }
   }
 });

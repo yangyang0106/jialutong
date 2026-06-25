@@ -1,5 +1,5 @@
 const { storeFile, removeStoredFile } = require("../../utils/file-storage");
-const { deleteRemoteFile } = require("../../utils/remote-config");
+const { deleteRemoteFile } = require("../../utils/file-api");
 const { isFamilyAdmin, isFamilyLoggedIn } = require("../../utils/auth");
 const {
   generateCollectionPlan,
@@ -19,6 +19,7 @@ const {
   voiceWithLandmark
 } = require("./review-presenter");
 const { cachePublishedElderRoute } = require("../../utils/elder-route-loader");
+const { resolveRouteImagesForDisplay } = require("../../utils/local-media");
 
 
 Page({
@@ -31,6 +32,9 @@ Page({
     expandedVoiceStepId: "",
     publishing: false,
     currentReviewIndex: 0,
+    currentStep: null,
+    pendingStepCount: 0,
+    nextPendingIndex: -1,
     showRouteTree: false,
     aiGenerating: false,
     batchTtsGenerating: false,
@@ -125,10 +129,69 @@ Page({
   },
 
   setRoute(route, extra = {}) {
+    const enrichedRoute = enrichRoute(route, this.data.collectionPlan);
+    const requestedIndex =
+      typeof extra.currentReviewIndex === "number"
+        ? extra.currentReviewIndex
+        : this.data.currentReviewIndex;
+    const reviewState = this.buildReviewState(enrichedRoute, requestedIndex);
     this.setData({
-      route: enrichRoute(route, this.data.collectionPlan),
-      ...extra
+      route: enrichedRoute,
+      ...reviewState,
+      ...extra,
+      currentReviewIndex: reviewState.currentReviewIndex
     });
+    this.resolveRouteImages(enrichedRoute, reviewState.currentReviewIndex);
+  },
+
+  resolveRouteImages(route, currentReviewIndex) {
+    const routeId = route && route.id;
+    if (!routeId) return;
+    this.imageResolveToken = (this.imageResolveToken || 0) + 1;
+    const token = this.imageResolveToken;
+    resolveRouteImagesForDisplay(route).then((displayRoute) => {
+      if (token !== this.imageResolveToken) return;
+      if (!this.data.route || this.data.route.id !== routeId) return;
+      this.setData({
+        route: displayRoute,
+        ...this.buildReviewState(displayRoute, currentReviewIndex)
+      });
+    });
+  },
+
+  buildReviewState(route, index) {
+    const steps = route && route.steps || [];
+    const currentReviewIndex = Math.max(0, Math.min(Number(index) || 0, Math.max(steps.length - 1, 0)));
+    const pendingIndexes = steps
+      .map((step, stepIndex) => ({ step, stepIndex }))
+      .filter(({ step }) => this.isStepPending(step))
+      .map(({ stepIndex }) => stepIndex);
+    let nextPendingIndex = -1;
+    for (let i = 0; i < pendingIndexes.length; i += 1) {
+      if (pendingIndexes[i] > currentReviewIndex) {
+        nextPendingIndex = pendingIndexes[i];
+        break;
+      }
+    }
+    if (nextPendingIndex < 0) {
+      for (let i = 0; i < pendingIndexes.length; i += 1) {
+        if (pendingIndexes[i] !== currentReviewIndex) {
+          nextPendingIndex = pendingIndexes[i];
+          break;
+        }
+      }
+    }
+    return {
+      currentReviewIndex,
+      currentStep: steps[currentReviewIndex] || null,
+      pendingStepCount: pendingIndexes.length,
+      nextPendingIndex
+    };
+  },
+
+  isStepPending(step) {
+    if (!step) return false;
+    return !step.approved || Boolean((step.blockingIssues || []).length);
   },
 
   loadRoute() {
@@ -178,18 +241,29 @@ Page({
     const steps = this.data.route && this.data.route.steps || [];
     if (!steps.length) return;
     const currentReviewIndex = Math.max(0, Math.min(Number(index) || 0, steps.length - 1));
-    this.setData({ currentReviewIndex, expandedVoiceStepId: "", activeReviewTab: "steps" });
+    this.setData({
+      ...this.buildReviewState(this.data.route, currentReviewIndex),
+      expandedVoiceStepId: "",
+      activeReviewTab: "steps"
+    });
     this.scrollToStepReview();
   },
 
   scrollToStepReview() {
     if (wx.pageScrollTo) {
       wx.pageScrollTo({
-        selector: ".review-pager",
-        duration: 180,
-        fail: () => wx.pageScrollTo({ scrollTop: 0, duration: 180 })
+        scrollTop: 0,
+        duration: 120
       });
     }
+  },
+
+  jumpToNextPending() {
+    if (this.data.nextPendingIndex < 0) {
+      wx.showToast({ title: "暂无待处理步骤", icon: "none" });
+      return;
+    }
+    this.setReviewIndex(this.data.nextPendingIndex);
   },
 
   toggleRouteTree() {
@@ -226,7 +300,10 @@ Page({
         this.setData({ batchTtsGenerating: true });
         generateRouteTtsBatch(this.routeId, tapIndex === 1)
           .then(({ route, steps }) => {
-            const moments = (steps || []).flatMap((step) => step.moments || []);
+            const moments = [];
+            (steps || []).forEach((step) => {
+              (step.moments || []).forEach((moment) => moments.push(moment));
+            });
             const successCount = moments.filter((item) => item.status === "SUCCESS").length;
             const failedCount = moments.filter((item) => item.status === "FAILED").length;
             this.setRoute(route);
@@ -311,6 +388,14 @@ Page({
       .then((route) => {
         this.setRoute(route);
         wx.showToast({ title: "这一步已确认" });
+        const enrichedRoute = enrichRoute(route, this.data.collectionPlan);
+        const nextPendingIndex = this.buildReviewState(
+          enrichedRoute,
+          this.data.currentReviewIndex
+        ).nextPendingIndex;
+        if (nextPendingIndex >= 0) {
+          setTimeout(() => this.setReviewIndex(nextPendingIndex), 350);
+        }
       })
       .catch((error) => wx.showToast({ title: error.message || "确认失败", icon: "none" }))
       .finally(() => this.setData({ busyStepId: "" }));

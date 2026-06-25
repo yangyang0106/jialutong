@@ -69,10 +69,6 @@ function getRouteDraft(routeId) {
   return request(`/api/engine/routes/${routeId}`);
 }
 
-function getPublishedElderRoute(slot) {
-  return request(`/api/engine/elder-routes/${slot}`, "GET", undefined, { optional: true });
-}
-
 function saveRouteDraft(route) {
   return request("/api/engine/routes", "POST", route);
 }
@@ -149,6 +145,10 @@ function listRouteHelpEvents(routeId) {
   return request(`/api/engine/routes/${routeId}/help-events`);
 }
 
+function listRouteArrivalEvents(routeId) {
+  return request(`/api/engine/routes/${routeId}/arrival-events`);
+}
+
 function updateRouteHelpEvent(routeId, eventId, helpStatus = "RESOLVED", handledNote = "") {
   return request(`/api/engine/routes/${routeId}/help-events/${eventId}`, "PUT", {
     helpStatus,
@@ -162,7 +162,6 @@ module.exports = {
   createRouteDraftFromBaidu,
   createRoutePlan,
   deleteRouteDraft,
-  getPublishedElderRoute,
   getRouteDraft,
   getRouteReviewCenter,
   getRouteTripSummary,
@@ -171,6 +170,7 @@ module.exports = {
   generateRouteTtsBatch,
   generateStepTts,
   listRouteDrafts,
+  listRouteArrivalEvents,
   listRouteHelpEvents,
   publishRouteDraft,
   recordStepExecution,

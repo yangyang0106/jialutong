@@ -51,9 +51,9 @@ JIALUTONG_WECHAT_SECRET=微信小程序AppSecret
 微信小程序后台需要将上传服务器域名加入 uploadFile 合法域名。
 
 本地开发者工具使用 `http://127.0.0.1:8090` 时，需要关闭“校验合法域名”。真机中的 `127.0.0.1` 指向手机自身，必须改为 HTTPS 公网服务地址。
-生产环境不要在小程序代码包中填写长期 `uploadToken`。家属进入“家属配置”后使用微信一键登录，上传时会自动携带服务端签发的登录 Token。小程序端不会再把 `uploadToken` 作为未登录时的鉴权兜底。
+家属进入“家属配置”后使用微信一键登录，上传、审核和发布请求会自动携带服务端签发的登录 Token。
 
-生产环境的服务域名固定在 `config/upload.js`。`config/upload.local.js` 仍可在本地开发或脚本验证时配置应急管理 Token；该文件已被 Git 忽略，不得提交到仓库。正式小程序应优先使用家属账号登录态。
+生产环境的服务域名固定在 `config/upload.js`。`config/upload.local.js` 只用于本地开发覆盖服务地址；该文件已被 Git 忽略，不得提交到仓库。
 
 仓库内已提供独立的家路通服务：`../jialutong-server`。
 
@@ -62,12 +62,11 @@ JIALUTONG_WECHAT_SECRET=微信小程序AppSecret
 ```js
 module.exports = {
   uploadUrl: "https://your-domain.example.com/api/files",
-  apiBaseUrl: "https://your-domain.example.com",
-  uploadToken: "仅供脚本或本地应急使用，生产小程序不要填写长期 Token"
+  apiBaseUrl: "https://your-domain.example.com"
 };
 ```
 
-图片、语音、动作说明、方向和坐标都会同步到服务端。家人更换手机后，首页会自动拉取远程路线配置。
+图片、语音、动作说明、方向和坐标都会同步到服务端。家人更换手机后，首页会读取服务端已发布路线。
 
 ## 安全限制
 
@@ -77,7 +76,7 @@ module.exports = {
 - 行程进度保存在本机，重新进入路线时会恢复。
 - 无后端版本无法自动通知家属或让家属远程查看位置，偏航时会停止路线并展示拨号求助界面。
 - 本地模式会压缩照片，但 23 张照片和 23 段语音仍可能达到微信本地文件容量上限；正式使用应配置上传服务。
-- 小程序内置的固定上传 Token 不能作为高安全鉴权方案；正式产品应由后端签发短期上传凭证。
+- 小程序不内置固定上传 Token；上传、审核和发布操作使用家庭登录态鉴权。
 - 家属端已经支持微信快速登录；首次登录会自动创建家庭、家属账号、默认老人档案和家属-老人绑定关系。路线创建、审核、上传、AI 和发布操作需要登录，老人端读取已发布路线不强制登录。
 
 ## 本地运行
@@ -113,25 +112,22 @@ module.exports = {
 - 将音频放入例如 `assets/audio/`，并填写每一步的 `audio` 路径。
 - 求助联系人电话没有默认值，发布前必须由家属在配置页填写真实联系人信息，不得使用测试号码。
 
-## 本地演示路线
+## 路线来源
 
-生产包默认不内置真实家庭路线。`data/routes.js` 保持为空，老人端优先读取服务端已发布路线，其次读取上次缓存。
+小程序只保留服务端路线引擎作为生产路线来源：
 
-如需本地离线演示，可运行：
+- 首页通过 `/api/engine/routes?status=PUBLISHED` 读取已发布路线，并按 `elderSlot` 挂到老人首页槽位。
+- 审核页和执行页都通过 `/api/engine/routes/{routeId}` 读取同一条真实 routeId。
+- `TO_MOM`、`TO_HOME` 只表示老人首页槽位，不能作为真实 routeId 进入路线详情或执行页。
+- 执行页不再套用本地 `routeStepAssets`；生产路线资产以服务端发布结果为准。
 
-```bash
-node scripts/sync-validated-demo-route.js
-```
-
-并在被 Git 忽略的 `config/upload.local.js` 中显式设置：
+本地开发配置只需要指向服务端：
 
 ```js
 module.exports = {
   apiBaseUrl: "http://127.0.0.1:8090",
-  enableLocalDemoRoutes: true
+  uploadUrl: "http://127.0.0.1:8090/api/files"
 };
 ```
-
-演示数据不得随生产包发布。
 
 定位每 5 秒刷新一次。接近当前步骤锚点时，页面提示家人查看照片，并等待家人手动确认进入下一步。

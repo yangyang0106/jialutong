@@ -1,46 +1,105 @@
 const app = getApp();
 const {
-  getCachedOrFixedElderRoute,
+  getCachedPublishedRouteBySlot,
+  listPublishedElderSlotRoutes,
   loadElderRoute
 } = require("../../utils/elder-route-loader");
+const { ELDER_ROUTE_SLOTS } = require("../../utils/elder-route-slots");
 const { getRouteStatus } = require("../../utils/route-status");
-const { pullRouteConfig } = require("../../utils/remote-config");
+const { getAuthState, clearAuthState, getCurrentAccount, requireFamilyLogin } = require("../../utils/auth");
 
 Page({
   data: {
     routeCards: [],
-    isLoading: true
+    isLoading: true,
+    userRole: "GUEST",
+    helpHolding: false
   },
 
   onShow() {
+    const role = this.checkRole();
+    this.verifySession();
+    if (role === "GUEST") {
+      this.setData({ routeCards: [], isLoading: false });
+      return;
+    }
     this.refreshRoutes();
   },
 
+  verifySession() {
+    const auth = getAuthState();
+    if (!auth || !auth.token) return;
+    getCurrentAccount()
+      .then(() => {})
+      .catch(() => {
+        if (getAuthState()) {
+          clearAuthState();
+          this.setData({ userRole: "GUEST" });
+          wx.showToast({ title: "登录已过期，请重新登录", icon: "none" });
+        }
+      });
+  },
+
+  checkRole() {
+    const auth = getAuthState();
+    if (!auth || !auth.user) {
+      this.setData({ userRole: "GUEST" });
+      return "GUEST";
+    }
+    if (auth.expiresAt) {
+      const expiry = new Date(auth.expiresAt).getTime();
+      if (!isNaN(expiry) && expiry < Date.now()) {
+        clearAuthState();
+        this.setData({ userRole: "GUEST" });
+        return "GUEST";
+      }
+    }
+    const role = auth.user.role;
+    if (role === "ELDER_USER") {
+      this.setData({ userRole: "ELDER" });
+      return "ELDER";
+    } else if (role === "FAMILY_ADMIN" || role === "FAMILY_MEMBER" || role === "SUPER_ADMIN") {
+      this.setData({ userRole: "FAMILY" });
+      return "FAMILY";
+    } else {
+      this.setData({ userRole: "GUEST" });
+      return "GUEST";
+    }
+  },
+
+  openFamilyLogin() {
+    wx.navigateTo({ url: "/pages/family-login/family-login" });
+  },
+
+  openElderBind() {
+    wx.navigateTo({ url: "/pages/elder-bind/elder-bind" });
+  },
+
   refreshRoutes() {
-    const routeIds = ["to-mom", "to-home"];
     const update = () => {
-      const routeCards = routeIds
-        .map((routeId) => this.buildRouteCard(routeId, getCachedOrFixedElderRoute(routeId)))
+      const routeCards = ELDER_ROUTE_SLOTS
+        .map((slot) => this.buildRouteCard(getCachedPublishedRouteBySlot(slot)))
         .filter(Boolean);
       this.setData({ routeCards });
     };
     update();
-    Promise.all(routeIds.map((routeId) =>
-      Promise.all([pullRouteConfig(routeId), loadElderRoute(routeId)]).catch(() => null)
-    )).then(() => {
+    listPublishedElderSlotRoutes().then((routes) => {
+      this.setData({ routeCards: (routes || []).map((route) => this.buildRouteCard(route)).filter(Boolean) });
+    }).finally(() => {
       update();
       this.setData({ isLoading: false });
     });
   },
 
-  buildRouteCard(routeId, route) {
+  buildRouteCard(route) {
     if (!route) return null;
     const status = getRouteStatus(route);
     const destination = route.destination && route.destination.name;
     const origin = route.origin && route.origin.name;
     const displayName = route.name || "家人路线";
     return {
-      routeId,
+      routeId: route.id,
+      elderSlot: route.elderSlot,
       icon: displayName.trim().charAt(0) || "路",
       name: displayName,
       place: destination || origin || "家人准备的路线",
@@ -65,7 +124,7 @@ Page({
           return;
         }
         wx.navigateTo({
-          url: `/pages/route/route?id=${routeId}`
+          url: `/pages/route/route?id=${route.id}`
         });
       })
       .catch(() => {
@@ -80,6 +139,27 @@ Page({
     wx.navigateTo({
       url: "/pages/config/config"
     });
+  },
+
+  openRouteManager() {
+    if (!requireFamilyLogin("/pages/route-create/route-create")) return;
+    wx.navigateTo({ url: "/pages/route-create/route-create" });
+  },
+
+  startHelpHold() {
+    if (this.helpHoldTimer) clearTimeout(this.helpHoldTimer);
+    this.setData({ helpHolding: true });
+    this.helpHoldTimer = setTimeout(() => {
+      this.helpHoldTimer = null;
+      this.setData({ helpHolding: false });
+      this.requestHelp();
+    }, 3000);
+  },
+
+  cancelHelpHold() {
+    if (this.helpHoldTimer) clearTimeout(this.helpHoldTimer);
+    this.helpHoldTimer = null;
+    if (this.data.helpHolding) this.setData({ helpHolding: false });
   },
 
   requestHelp() {

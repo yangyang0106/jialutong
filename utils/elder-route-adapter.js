@@ -1,8 +1,3 @@
-const SLOT_ROUTE_IDS = Object.freeze({
-  TO_MOM: "to-mom",
-  TO_HOME: "to-home"
-});
-
 const TYPE_MODES = Object.freeze({
   START: "步行",
   STRAIGHT: "步行",
@@ -112,11 +107,12 @@ function adaptStep(step) {
 
 function adaptRouteForExecution(route, slot) {
   if (!route || !route.steps || !route.steps.length) return null;
+  const elderSlot = slot || route.elderSlot || null;
   return {
     id: route.id,
-    slotRouteId: SLOT_ROUTE_IDS[slot] || "",
+    slotRouteId: elderSlot,
     engineRouteId: route.id,
-    elderSlot: slot || route.elderSlot || null,
+    elderSlot,
     name: route.name,
     origin: route.origin,
     destination: route.destination,
@@ -133,7 +129,6 @@ function adaptPublishedRoute(route, slot) {
 }
 
 module.exports = {
-  SLOT_ROUTE_IDS,
   adaptPublishedRoute,
   adaptRouteForExecution,
   adaptStep

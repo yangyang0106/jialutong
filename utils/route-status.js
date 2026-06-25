@@ -1,5 +1,3 @@
-const { applyAssetsToRoute } = require("./route-assets");
-
 function stepNeedsLocation(step) {
   return step.mode.includes("步行") || step.mode.includes("骑行");
 }
@@ -24,7 +22,7 @@ function getStepIssues(step) {
 }
 
 function getRouteStatus(route) {
-  const configuredRoute = applyAssetsToRoute(route);
+  const configuredRoute = route;
   const incompleteSteps = configuredRoute.steps
     .map((step) => ({
       stepNo: step.stepNo,

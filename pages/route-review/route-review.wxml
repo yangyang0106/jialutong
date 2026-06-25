@@ -56,6 +56,15 @@
         <view wx:if="{{route.status !== 'PUBLISHED'}}" class="ai-action-row">
           <button class="ai-action-button collection-action-button" loading="{{collectionPlanning}}" disabled="{{collectionPlanning}}" bindtap="generateCollectionChecklist">AI生成采集清单</button>
         </view>
+        <button
+          wx:if="{{route.status !== 'PUBLISHED'}}"
+          class="publish-button"
+          loading="{{publishing}}"
+          bindtap="publishRoute"
+        >
+          发布家人路线
+        </button>
+        <view wx:else class="published-note">路线已经发布并锁定</view>
         <view wx:if="{{collectionPlan}}" class="collection-card">
           <text class="collection-title">真实路线采集清单</text>
           <text class="collection-summary">{{collectionPlan.summary}}</text>
@@ -89,9 +98,18 @@
 
     <view wx:if="{{activeReviewTab === 'steps'}}" class="review-pager">
       <button class="pager-button" disabled="{{currentReviewIndex === 0}}" bindtap="previousStep">上一条</button>
-      <text class="pager-progress">审核 {{currentReviewIndex + 1}} / {{route.steps.length}}</text>
+      <view class="pager-center">
+        <text class="pager-progress">审核 {{currentReviewIndex + 1}} / {{route.steps.length}}</text>
+        <text class="pager-pending">{{pendingStepCount}} 条待处理</text>
+      </view>
       <button class="pager-button" disabled="{{currentReviewIndex >= route.steps.length - 1}}" bindtap="nextStep">下一条</button>
     </view>
+    <button
+      wx:if="{{activeReviewTab === 'steps' && pendingStepCount > 0}}"
+      class="pending-jump-button"
+      disabled="{{nextPendingIndex < 0}}"
+      bindtap="jumpToNextPending"
+    >跳到下一个待处理</button>
 
     <block wx:if="{{activeReviewTab === 'steps'}}">
     <block wx:for="{{route.steps}}" wx:key="id">
@@ -107,7 +125,7 @@
         </text>
       </view>
 
-      <image wx:if="{{item.imageUrl}}" class="step-photo" src="{{item.imageUrl}}" mode="aspectFill" />
+      <image wx:if="{{item.imageUrl}}" class="step-photo" src="{{item.displayImageUrl || item.imageUrl}}" mode="aspectFill" />
 
       <view wx:if="{{item.hasCollectionTasks}}" class="collection-step-box">
         <text class="collection-section-title">本步骤采集建议</text>
@@ -256,40 +274,30 @@
         <text class="blocking-copy">{{item.transitWarning}}</text>
       </view>
 
-      <button
-        wx:if="{{route.status !== 'PUBLISHED'}}"
-        class="photo-button"
-        loading="{{busyStepId === item.id}}"
-        data-step-id="{{item.id}}"
-        data-step-no="{{item.stepNo}}"
-        bindtap="addFamilyPhoto"
-      >
-        {{item.imageStatus === "FAMILY" ? "重新拍家属实景照片" : "拍摄家属实景照片"}}
-      </button>
-      <view wx:if="{{route.status !== 'PUBLISHED'}}" class="review-actions">
-        <button class="reject-button" data-step-id="{{item.id}}" bindtap="rejectStep">需要修改</button>
-        <button
-          class="approve-button"
-          loading="{{busyStepId === item.id}}"
-          disabled="{{!item.canApprove}}"
-          data-step-id="{{item.id}}"
-          bindtap="approveStep"
-        >
-          {{item.approved ? "已经确认" : "确认这一步"}}
-        </button>
-      </view>
     </view>
     </block>
 
-    <button
-      wx:if="{{route.status !== 'PUBLISHED'}}"
-      class="publish-button"
-      loading="{{publishing}}"
-      bindtap="publishRoute"
-    >
-      发布家人路线
-    </button>
-    <view wx:else class="published-note">路线已经发布并锁定</view>
+    <view wx:if="{{route.status !== 'PUBLISHED' && currentStep}}" class="sticky-review-actions">
+      <button
+        class="sticky-photo-button"
+        loading="{{busyStepId === currentStep.id}}"
+        data-step-id="{{currentStep.id}}"
+        data-step-no="{{currentStep.stepNo}}"
+        bindtap="addFamilyPhoto"
+      >
+        {{currentStep.imageStatus === "FAMILY" ? "重拍照片" : "拍家属照片"}}
+      </button>
+      <button class="sticky-reject-button" data-step-id="{{currentStep.id}}" bindtap="rejectStep">需修改</button>
+      <button
+        class="sticky-approve-button"
+        loading="{{busyStepId === currentStep.id}}"
+        disabled="{{!currentStep.canApprove}}"
+        data-step-id="{{currentStep.id}}"
+        bindtap="approveStep"
+      >
+        {{currentStep.approved ? "已确认" : "确认"}}
+      </button>
+    </view>
     </block>
   </block>
 </view>

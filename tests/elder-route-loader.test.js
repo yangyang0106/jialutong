@@ -15,8 +15,12 @@ function loadLoader(requestHandler, storage = {}) {
     request: requestHandler
   };
   delete require.cache[require.resolve("../utils/route-api")];
+  delete require.cache[require.resolve("../utils/elder-route-slots")];
   delete require.cache[require.resolve("../utils/elder-route-loader")];
-  return require("../utils/elder-route-loader");
+  return {
+    loader: require("../utils/elder-route-loader"),
+    repository: require("../utils/route-api")
+  };
 }
 
 function publishedRoute() {
@@ -40,29 +44,48 @@ function publishedRoute() {
 }
 
 test("elder route loader caches a published route and uses it when offline", async () => {
-  const storage = {
-    routeStepAssets: {
-      "engine-to-mom:1": { voiceText: "旧路线提示", image: "old-image.jpg" }
-    }
-  };
+  const storage = {};
   let online = true;
-  const loader = loadLoader((options) => {
+  const { loader } = loadLoader((options) => {
     if (online) {
-      options.success({ statusCode: 200, data: publishedRoute() });
+      options.success({ statusCode: 200, data: { routes: [publishedRoute()] } });
       return;
     }
     options.fail(new Error("offline"));
   }, storage);
 
-  const remote = await loader.loadElderRoute("to-mom");
+  const remote = await loader.loadElderRouteSlot("TO_MOM");
   assert.equal(remote.engineRouteId, "engine-to-mom");
   assert.equal(remote.steps[0].voiceText, "请走到小区门口。");
-  const { applyAssetsToRoute } = require("../utils/route-assets");
-  assert.equal(applyAssetsToRoute(remote).steps[0].voiceText, "请走到小区门口。");
 
   online = false;
-  const cached = await loader.loadElderRoute("to-mom");
+  const cached = await loader.loadElderRouteSlot("TO_MOM");
   assert.equal(cached.engineRouteId, "engine-to-mom");
   assert.equal(cached.id, "engine-to-mom");
-  assert.equal(cached.slotRouteId, "to-mom");
+  assert.equal(cached.slotRouteId, "TO_MOM");
+});
+
+test("elder route loader rejects a slot when a real route id is required", async () => {
+  const { loader } = loadLoader((options) => {
+    options.success({ statusCode: 200, data: publishedRoute() });
+  });
+  await assert.rejects(() => loader.loadElderRoute("TO_MOM"), /真实路线 ID/);
+});
+
+test("review detail and execution loader use the same engine route id", async () => {
+  const calls = [];
+  const { loader, repository } = loadLoader((options) => {
+    calls.push(options.url);
+    options.success({ statusCode: 200, data: publishedRoute() });
+  });
+
+  const reviewRoute = await repository.getRouteDraft("engine-to-mom");
+  const executionRoute = await loader.loadElderRoute("engine-to-mom");
+
+  assert.equal(reviewRoute.id, "engine-to-mom");
+  assert.equal(executionRoute.id, "engine-to-mom");
+  assert.deepEqual(calls, [
+    "https://route.example.com/api/engine/routes/engine-to-mom",
+    "https://route.example.com/api/engine/routes/engine-to-mom"
+  ]);
 });

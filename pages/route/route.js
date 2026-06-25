@@ -5,7 +5,6 @@ const {
   recordStepExecution
 } = require("../../utils/route-api");
 const { adaptRouteForExecution } = require("../../utils/elder-route-adapter");
-const { applyAssetsToRoute } = require("../../utils/route-assets");
 const { getRouteStatus } = require("../../utils/route-status");
 const { getTripProgress, saveTripProgress, clearTripProgress } = require("../../utils/trip-progress");
 const {
@@ -18,6 +17,7 @@ const {
   createVoiceCompanionState,
   resumeFromOffRoute
 } = require("../../utils/voice-companion");
+const { resolveStepImageForDisplay } = require("../../utils/local-media");
 
 const {
   HELP_HOLD_DURATION,
@@ -70,17 +70,22 @@ Page({
       ? getRouteDraft(options.id).then((route) => adaptRouteForExecution(route, route.elderSlot))
       : loadElderRoute(options.id);
     routeLoader
-      .then((sourceRoute) => this.initializeRoute(sourceRoute))
-      .catch(() => this.showMissingRoute())
+      .then(
+        (sourceRoute) => this.initializeRoute(sourceRoute),
+        (error) => this.showMissingRoute(error)
+      )
       .finally(() => wx.hideLoading());
   },
 
-  showMissingRoute() {
+  showMissingRoute(error) {
+    if (error && console && console.warn) {
+      console.warn("[route] load route failed", error);
+    }
     wx.showModal({
-      title: "路线不存在",
-      content: "请返回首页重新选择。",
+      title: "这条路打不开",
+      content: "请先停在原地，让家人重新发一条路线。",
       showCancel: false,
-      success: () => wx.navigateBack()
+      success: () => this.backHome()
     });
   },
 
@@ -89,15 +94,21 @@ Page({
       this.showMissingRoute();
       return;
     }
-    const status = getRouteStatus(sourceRoute);
-    if (!status.ready && !this.simulatorEnabled) {
-      const firstStep = status.incompleteSteps[0];
-      wx.redirectTo({
-        url: `/pages/config/config?routeId=${sourceRoute.id}&stepNo=${firstStep.stepNo}`
+    if (!this.simulatorEnabled && sourceRoute.published !== true) {
+      wx.showModal({
+        title: "路线还没准备好",
+        content: "请先停在原地，让家人确认后再出门。",
+        showCancel: false,
+        success: () => this.backHome()
       });
       return;
     }
-    const route = applyAssetsToRoute(sourceRoute);
+    const status = getRouteStatus(sourceRoute);
+    if (!status.ready && !this.simulatorEnabled) {
+      this.showRouteNotReady(sourceRoute, status);
+      return;
+    }
+    const route = sourceRoute;
     const progress = getTripProgress(route.id);
     this.tripId = progress && progress.tripId || `${route.id}-${Date.now()}`;
     const currentStepIndex =
@@ -124,6 +135,7 @@ Page({
       })
     });
     wx.setNavigationBarTitle({ title: route.name });
+    this.resolveCurrentStepImage();
     this.resetStepTracking();
     this.playVoiceMoment("enter");
     this.refreshLocation();
@@ -133,6 +145,20 @@ Page({
     }
   },
 
+  showRouteNotReady(sourceRoute, status) {
+    const firstStep = status.incompleteSteps && status.incompleteSteps[0];
+    const stepText = firstStep && firstStep.stepNo
+      ? `第 ${firstStep.stepNo} 步还需要家人确认。`
+      : "这条路线还需要家人确认。";
+    wx.showModal({
+      title: "路线还没准备好",
+      content: `${stepText} 请先停在原地，不要自己继续走。`,
+      confirmText: "回首页",
+      showCancel: false,
+      success: () => this.backHome()
+    });
+  },
+
   onHide() {
     this.wasHidden = true;
     this.locationGeneration = (this.locationGeneration || 0) + 1;
@@ -140,10 +166,16 @@ Page({
     this.pauseTimers();
     if (this.audioContext) this.audioContext.pause();
     this.audioBusy = false;
+    if (wx.setKeepScreenOn) {
+      wx.setKeepScreenOn({ keepScreenOn: false });
+    }
   },
 
   onShow() {
     if (!this.data.route || this.data.isFinished) return;
+    if (wx.setKeepScreenOn) {
+      wx.setKeepScreenOn({ keepScreenOn: true });
+    }
     if (this.wasHidden) {
       this.wasHidden = false;
       wx.showModal({
@@ -165,6 +197,9 @@ Page({
     if (this.audioContext) {
       this.audioContext.destroy();
       this.audioContext = null;
+    }
+    if (wx.setKeepScreenOn) {
+      wx.setKeepScreenOn({ keepScreenOn: false });
     }
   },
 
@@ -296,12 +331,13 @@ Page({
     this.recordCurrentStepResult("FOUND");
     const nextIndex = this.data.currentStepIndex + 1;
     if (nextIndex >= this.data.route.steps.length) {
+      this.recordArrivalResult();
       clearTripProgress(this.data.route.id);
       this.stopResources();
       this.setData({ isFinished: true });
       wx.showModal({
         title: "已经到达",
-        content: "路线已完成，请注意安全。",
+        content: "路线已完成，已记录到达，家人可在路线复盘里看到。",
         showCancel: false
       });
       return;
@@ -311,11 +347,22 @@ Page({
       currentStepIndex: nextIndex,
       ...buildStepState(this.data.route.steps[nextIndex])
     });
+    this.resolveCurrentStepImage();
     this.audioBusy = false;
     saveTripProgress(this.data.route.id, nextIndex, this.tripId);
     this.resetStepTracking();
     this.playVoiceMoment("enter");
     this.refreshLocation();
+  },
+
+  resolveCurrentStepImage() {
+    const step = this.data.currentStep;
+    if (!step || !step.imageUrl) return;
+    const stepNo = step.stepNo;
+    resolveStepImageForDisplay(step).then((resolvedStep) => {
+      if (!this.data.currentStep || this.data.currentStep.stepNo !== stepNo) return;
+      this.setData({ currentStep: resolvedStep });
+    });
   },
 
   notFoundYet() {
@@ -335,21 +382,17 @@ Page({
   startHelpHold() {
     if (this.helpHoldTimer) clearTimeout(this.helpHoldTimer);
     this.setData({ helpHolding: true });
-    this.helpHoldCompleted = false;
     this.helpHoldTimer = setTimeout(() => {
       this.helpHoldTimer = null;
-      this.helpHoldCompleted = true;
       this.setData({ helpHolding: false });
       this.requestHelp();
     }, HELP_HOLD_DURATION);
   },
 
   cancelHelpHold() {
-    const shouldShowCancelled = Boolean(this.helpHoldTimer) && !this.helpHoldCompleted;
     if (this.helpHoldTimer) clearTimeout(this.helpHoldTimer);
     this.helpHoldTimer = null;
     if (this.data.helpHolding) this.setData({ helpHolding: false });
-    if (shouldShowCancelled) wx.showToast({ title: "已取消求助", icon: "none" });
   },
 
   requestHelp() {
@@ -378,6 +421,23 @@ Page({
     }).catch(() => null);
   },
 
+  recordArrivalResult() {
+    if (this.simulatorEnabled || !this.data.route || !this.data.currentStep) return;
+    const step = this.data.currentStep;
+    recordStepExecution({
+      tripId: this.tripId,
+      routeId: this.data.route.engineRouteId || this.data.route.id,
+      stepId: step.engineStepId || String(step.stepNo),
+      stepNo: step.stepNo,
+      stepResult: "ARRIVED",
+      occurredAt: new Date().toISOString(),
+      helpStatus: "NONE",
+      emergencyContactName: app.globalData.emergencyContactName || "",
+      emergencyRelation: app.globalData.emergencyRelation || "",
+      emergencyPhone: app.globalData.emergencyPhone || ""
+    }).catch(() => null);
+  },
+
   closeHelp() {
     if (this.data.isOffRoute) {
       return;
@@ -399,6 +459,23 @@ Page({
     wx.makePhoneCall({ phoneNumber: phone });
   },
 
+  callFamilyAfterArrival() {
+    this.callEmergency();
+  },
+
+  endNavigation() {
+    wx.showModal({
+      title: "结束导航",
+      content: "确定要结束当前导航吗？结束后将返回首页。",
+      confirmText: "结束导航",
+      confirmColor: "#6a5544",
+      cancelText: "继续导航",
+      success: (result) => {
+        if (result.confirm) this.backHome();
+      }
+    });
+  },
+
   resumeRoute() {
     if (!this.data.canResume) return;
     this.setData({
@@ -410,6 +487,20 @@ Page({
     this.resetStepTracking();
     this.playVoiceMoment("enter");
     this.refreshLocation();
+  },
+
+  selfResumeRoute() {
+    this.setData({
+      isOffRoute: false,
+      helpVisible: false,
+      canResume: true,
+      routeSafetyWarning: false
+    });
+    this.voiceCompanionState = resumeFromOffRoute(this.voiceCompanionState);
+    this.resetStepTracking();
+    this.playVoiceMoment("enter");
+    this.refreshLocation();
+    wx.showToast({ title: "已重新开始这一步", icon: "none", duration: 2000 });
   },
 
   simulateStart() {

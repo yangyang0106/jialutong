@@ -5,7 +5,7 @@
     <text class="summary-note">先确认求助联系人，再管理家人路线。</text>
   </view>
 
-  <view class="settings-card contact-card">
+  <view class="config-section contact-section">
     <view class="card-heading-row">
       <view class="card-heading-copy">
         <text class="settings-title">求助联系人</text>
@@ -23,30 +23,60 @@
     </button>
   </view>
 
-  <view class="settings-card route-admin-card">
-    <text class="settings-title">路线管理</text>
-    <text class="settings-note">路线创建、审核、照片和语音配置都放在这里。</text>
-    <view class="account-panel" wx:if="{{authUser}}">
-      <text class="account-label">当前家庭</text>
-      <text class="account-name">{{authUser.familyName}}</text>
-      <text class="account-note">登录身份：{{authUser.displayName || "微信家属"}}</text>
-      <view class="elder-list" wx:if="{{elders.length}}">
-        <text class="account-label">当前照顾对象</text>
-        <view class="elder-pill" wx:for="{{elders}}" wx:key="id">
-          <view class="elder-info">
-            <text>{{item.name}}</text>
-            <text class="elder-relation">{{item.relation}}</text>
-          </view>
-          <button class="bind-code-button" data-id="{{item.id}}" bindtap="generateElderBindCode">生成绑定码</button>
-        </view>
+  <view class="config-section route-section">
+    <view class="card-heading-row">
+      <view class="card-heading-copy">
+        <text class="settings-title">路线管理</text>
+        <text class="settings-note">创建路线、审核步骤、补照片和语音。</text>
       </view>
-      <button class="logout-button" bindtap="logoutFamily">退出账号</button>
+      <text class="{{authUser ? 'status-pill ready-pill' : 'status-pill warning-pill'}}">
+        {{authUser ? "已登录" : "未登录"}}
+      </text>
     </view>
-    <view class="account-panel account-missing" wx:else>
-      <text class="account-name">还未登录家属账号</text>
+
+    <view wx:if="{{authUser}}" class="account-summary">
+      <view>
+        <text class="account-label">当前家庭</text>
+        <text class="account-name">{{authUser.familyName}}</text>
+        <text class="account-note">登录身份：{{authUser.displayName || "微信用户"}}</text>
+      </view>
+      <button class="logout-button" bindtap="logoutFamily">退出</button>
+    </view>
+
+    <view wx:else class="login-inline">
       <text class="account-note">登录后才能创建、审核和发布路线。</text>
       <button class="login-button" bindtap="openFamilyLogin">登录或创建账号</button>
     </view>
+
+    <view class="elder-list" wx:if="{{authUser && elders.length}}">
+      <text class="account-label">照顾对象</text>
+      <view class="elder-row" wx:for="{{elders}}" wx:key="id">
+        <view class="elder-info">
+          <text class="elder-name">{{item.name}}</text>
+          <text class="elder-relation">{{item.relation || "家人"}}</text>
+        </view>
+        <button class="bind-code-button" data-id="{{item.id}}" bindtap="generateElderBindCode">生成绑定码</button>
+      </view>
+    </view>
+
     <button class="route-create-entry" bindtap="openRouteManager">进入路线管理</button>
+  </view>
+
+  <view wx:if="{{bindCodePanel}}" class="bind-code-overlay">
+    <view class="bind-code-card">
+      <text class="bind-title">{{bindCodePanel.elderName}}的绑定码</text>
+      <text class="bind-note">老人手机打开“老人绑定”，点“扫码绑定”。</text>
+      <view class="barcode-box">
+        <view
+          wx:for="{{bindCodePanel.bars}}"
+          wx:key="key"
+          class="barcode-bar"
+          style="width: {{item.width}}rpx; background: {{item.black ? '#111111' : '#ffffff'}};"
+        />
+      </view>
+      <text class="bind-code-text">{{bindCodePanel.code}}</text>
+      <text class="bind-expire">30 分钟内有效</text>
+      <button class="close-bind-button" bindtap="closeBindCodePanel">关闭</button>
+    </view>
   </view>
 </view>

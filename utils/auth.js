@@ -60,6 +60,9 @@ function requestAuth(path, method = "GET", data) {
       data,
       header: getAuthHeader(),
       success: ({ statusCode, data: response }) => {
+        if (statusCode === 401) {
+          clearAuthState();
+        }
         if (statusCode < 200 || statusCode >= 300) {
           const message =
             response && response.detail

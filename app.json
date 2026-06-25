@@ -20,9 +20,6 @@
   "permission": {
     "scope.userLocation": {
       "desc": "用于计算您距离下一个路线地点还有多远"
-    },
-    "scope.record": {
-      "desc": "用于录制每一步的真人语音提示"
     }
   },
   "requiredPrivateInfos": [

@@ -158,6 +158,14 @@
   background: var(--color-bg);
 }
 
+.arrival-card {
+  margin-top: var(--space-sm);
+  padding: var(--space-md);
+  border: 2rpx solid #cfe7c0;
+  border-radius: var(--radius-md);
+  background: #f7fff2;
+}
+
 .help-card.REQUESTED,
 .help-card.CALLING {
   border-color: #e0564b;

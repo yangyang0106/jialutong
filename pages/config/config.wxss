@@ -7,7 +7,8 @@
 
 .summary-card,
 .step-card,
-.settings-card {
+.settings-card,
+.config-section {
   display: flex;
   flex-direction: column;
   margin-bottom: var(--space-md);
@@ -67,6 +68,15 @@
   background: #fffdfb;
 }
 
+.contact-section {
+  border-color: #ffd0a6;
+  background: #fffdfb;
+}
+
+.route-section {
+  background: var(--color-surface);
+}
+
 .contact-warning {
   margin-top: var(--space-md);
   padding: var(--space-sm) var(--space-md);
@@ -91,10 +101,81 @@ button.contact-entry-button {
   color: var(--color-primary-dark);
   font-size: var(--font-md);
   font-weight: var(--weight-heading);
+  line-height: 1.2;
 }
 
-.route-admin-card {
+.bind-code-overlay {
+  position: fixed;
+  z-index: 80;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  padding: var(--space-lg);
+  background: rgba(47, 36, 28, 0.68);
+}
+
+.bind-code-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: var(--space-xl) var(--space-lg);
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
+  text-align: center;
+}
+
+.bind-title {
+  color: var(--color-text-primary);
+  font-size: var(--font-2xl);
+  font-weight: var(--weight-heading);
+}
+
+.bind-note,
+.bind-expire {
+  margin-top: var(--space-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--font-base);
+  line-height: 1.45;
+}
+
+.barcode-box {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  height: 170rpx;
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  border: 3rpx solid #111111;
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+}
+
+.barcode-bar {
+  height: 100%;
+}
+
+.bind-code-text {
+  margin-top: var(--space-md);
+  color: var(--color-text-primary);
+  font-size: 64rpx;
+  font-weight: var(--weight-heading);
+  letter-spacing: 8rpx;
+}
+
+.close-bind-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100rpx;
+  margin-top: var(--space-lg);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: var(--font-md);
+  font-weight: var(--weight-heading);
 }
 
 .field-label {
@@ -217,17 +298,13 @@ button.contact-entry-button {
   color: var(--color-text-secondary);
 }
 
-.account-panel {
+.account-summary,
+.login-inline {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
   margin-top: var(--space-md);
-  padding: var(--space-md);
-  border-radius: var(--radius-md);
-  background: #fffdfb;
-}
-
-.account-missing {
-  background: #fff8f1;
 }
 
 .account-label,
@@ -238,6 +315,7 @@ button.contact-entry-button {
 }
 
 .account-name {
+  display: block;
   margin-top: var(--space-xs);
   color: var(--color-text-primary);
   font-size: var(--font-md);
@@ -247,20 +325,34 @@ button.contact-entry-button {
 .elder-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
   margin-top: var(--space-md);
 }
 
-.elder-pill {
+.elder-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-pill);
-  background: var(--color-primary-light);
+  gap: var(--space-sm);
+  min-height: 96rpx;
+  margin-top: var(--space-sm);
+  padding: var(--space-sm) 0;
+  border-top: 2rpx solid #f0e5da;
   color: var(--color-text-primary);
   font-size: var(--font-base);
   font-weight: var(--weight-label);
+}
+
+.elder-info {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.elder-name {
+  color: var(--color-text-primary);
+  font-size: var(--font-base);
+  font-weight: var(--weight-heading);
 }
 
 .elder-relation {
@@ -269,27 +361,39 @@ button.contact-entry-button {
 }
 
 button.login-button,
-button.logout-button {
+button.logout-button,
+button.bind-code-button {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 84rpx;
-  margin-top: var(--space-md);
   padding: 0 var(--space-md);
   border-radius: var(--radius-md);
   font-size: var(--font-base);
   font-weight: var(--weight-label);
+  line-height: 1.2;
 }
 
 button.login-button {
+  flex-shrink: 0;
   background: var(--color-primary);
   color: #ffffff;
 }
 
 button.logout-button {
+  flex-shrink: 0;
   border: 3rpx solid #efb57e;
   background: #fff8f1;
   color: var(--color-primary-dark);
+}
+
+button.bind-code-button {
+  flex-shrink: 0;
+  min-height: 76rpx;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  font-size: var(--font-sm);
 }
 
 .optional-note {
@@ -311,6 +415,7 @@ button.route-create-entry {
   color: var(--color-primary-dark);
   font-size: var(--font-md);
   font-weight: var(--weight-body);
+  line-height: 1.2;
 }
 
 .route-heading {

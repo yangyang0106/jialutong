@@ -10,7 +10,5 @@ const apiBaseUrl = localConfig.apiBaseUrl || "https://jialutong.cloud";
 
 module.exports = {
   apiBaseUrl,
-  uploadUrl: localConfig.uploadUrl || `${apiBaseUrl}/api/files`,
-  uploadToken: localConfig.uploadToken || "",
-  enableLocalDemoRoutes: localConfig.enableLocalDemoRoutes === true
+  uploadUrl: localConfig.uploadUrl || `${apiBaseUrl}/api/files`
 };

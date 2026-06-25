@@ -6,7 +6,7 @@ const { createExecutionState, processLocation, resetForStep, simulateLocation } 
 const { calculateDistance } = require("../utils/geo");
 
 const BASE_URL = process.env.JIALUTONG_BASE_URL || "http://127.0.0.1:8090";
-const TOKEN = process.env.JIALUTONG_UPLOAD_TOKEN || "";
+const TOKEN = process.env.JIALUTONG_AUTH_TOKEN || "";
 const ROUTE_ID = process.env.JIALUTONG_E2E_ROUTE_ID || "e2e-fuyou-lintao-walk";
 const REUSE_AUDIO_ROUTE_ID = process.env.JIALUTONG_REUSE_AUDIO_ROUTE_ID || "";
 const headers = {
@@ -15,7 +15,7 @@ const headers = {
 };
 
 if (!TOKEN) {
-  throw new Error("请先设置 JIALUTONG_UPLOAD_TOKEN，再运行真实路线 E2E 脚本。");
+  throw new Error("请先设置 JIALUTONG_AUTH_TOKEN（家属登录后获取的 token），再运行真实路线 E2E 脚本。");
 }
 
 async function jsonRequest(pathname, options = {}) {

@@ -60,6 +60,19 @@
   font-size: var(--font-md);
 }
 
+button.scan-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 112rpx;
+  margin: var(--space-sm) 0 var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: var(--font-xl);
+  font-weight: var(--weight-heading);
+}
+
 button.primary-button,
 button.ghost-button {
   display: flex;
