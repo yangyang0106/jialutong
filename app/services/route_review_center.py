@@ -2,6 +2,7 @@ from typing import Any
 
 
 RESULT_KEYS = ("FOUND", "NOT_FOUND", "HELP")
+ARRIVAL_RESULT = "ARRIVED"
 
 
 def _empty_counts() -> dict[str, int]:
@@ -54,8 +55,9 @@ def build_route_review_center(route: dict[str, Any], trip_results: list[dict[str
     completed_trip_ids = {
         item.get("tripId")
         for item in route_results
-        if item.get("tripId") and item.get("stepResult") in RESULT_KEYS
+        if item.get("tripId") and item.get("stepResult") == ARRIVAL_RESULT
     }
+    arrived_count = len(completed_trip_ids)
     totals = _empty_counts()
     step_counts: dict[str, dict[str, int]] = {}
     for item in route_results:
@@ -121,6 +123,7 @@ def build_route_review_center(route: dict[str, Any], trip_results: list[dict[str
         "routeName": route.get("name", ""),
         "totalTrips": len(trip_ids),
         "completedTrips": len(completed_trip_ids),
+        "arrivedCount": arrived_count,
         "foundCount": totals["FOUND"],
         "notFoundCount": totals["NOT_FOUND"],
         "helpCount": totals["HELP"],

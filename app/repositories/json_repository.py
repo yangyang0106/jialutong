@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any
 
-from app.storage import load_json, load_routes, save_json, save_routes
+from app.storage import load_json, save_json
 
 
 class JsonAppRepository:
@@ -14,19 +14,11 @@ class JsonAppRepository:
     def __init__(
         self,
         *,
-        route_config_file: Path,
         engine_routes_file: Path,
         trip_results_file: Path,
     ) -> None:
-        self.route_config_file = route_config_file
         self.engine_routes_file = engine_routes_file
         self.trip_results_file = trip_results_file
-
-    def load_route_configs(self) -> dict:
-        return load_routes(self.route_config_file)
-
-    def save_route_configs(self, routes: dict) -> None:
-        save_routes(self.route_config_file, routes)
 
     def load_engine_routes(self) -> dict[str, Any]:
         return load_json(self.engine_routes_file, {})

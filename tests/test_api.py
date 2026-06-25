@@ -1,41 +1,75 @@
 import importlib
+import os
 import sqlite3
 from urllib.error import URLError
 
 from fastapi.testclient import TestClient
 
+_admin_headers_cache: dict = {}
+
 
 def create_client(tmp_path, monkeypatch):
     monkeypatch.setenv("JIALUTONG_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("JIALUTONG_PUBLIC_BASE_URL", "https://files.example.com")
-    monkeypatch.setenv("JIALUTONG_UPLOAD_TOKEN", "test-token")
+    # 保留测试自定义的超管 openid，或使用默认值
+    admin_openid = os.getenv("JIALUTONG_SUPER_ADMIN_OPENIDS", "").split(",")[0].strip()
+    if not admin_openid:
+        admin_openid = "test-admin-openid"
+        monkeypatch.setenv("JIALUTONG_SUPER_ADMIN_OPENIDS", admin_openid)
     import app.main
 
     module = importlib.reload(app.main)
-    return TestClient(module.create_app())
+    client = TestClient(module.create_app())
+    # 通过微信登录获取管理员 session，替代已移除的 legacy token
+    monkeypatch.setattr(
+        module.container,
+        "request_wechat_code_session",
+        lambda code: {"openid": admin_openid, "session_key": "key"},
+    )
+    login = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "admin", "familyName": "测试家庭"},
+    )
+    assert login.status_code == 200, login.text
+    _admin_headers_cache[id(client)] = {"Authorization": f"Bearer {login.json()['token']}"}
+    return client
 
 
-def test_upload_and_route_config(tmp_path, monkeypatch):
+def admin_headers(client):
+    return _admin_headers_cache[id(client)]
+
+
+def test_upload_and_delete_file(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     upload = client.post(
         "/api/files",
         headers=headers,
-        data={"routeId": "to-mom", "stepNo": "1", "kind": "image"},
+        data={"routeId": "route-engine-test", "stepNo": "1", "kind": "image"},
         files={"file": ("step.jpg", b"fake-image", "image/jpeg")},
     )
     assert upload.status_code == 200
     image_url = upload.json()["url"]
+    assert image_url.startswith("https://files.example.com/files/route-engine-test/1/")
 
-    update = client.put(
-        "/api/routes/to-mom/steps/1",
+    delete = client.delete("/api/files", headers=headers, params={"url": image_url})
+    assert delete.status_code == 200
+    assert delete.json() == {"deleted": True}
+
+
+def test_legacy_route_config_api_is_removed(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    headers = admin_headers(client)
+
+    get_response = client.get("/api/routes/route-engine-test")
+    put_response = client.put(
+        "/api/routes/route-engine-test/steps/1",
         headers=headers,
-        json={"image": image_url, "desc": "看到大门后右转", "direction": "右转"},
+        json={"image": "https://files.example.com/files/a.jpg"},
     )
-    assert update.status_code == 200
 
-    route = client.get("/api/routes/to-mom")
-    assert route.json()["steps"]["1"]["image"] == image_url
+    assert get_response.status_code == 404
+    assert put_response.status_code == 404
 
 
 def test_upload_requires_token(tmp_path, monkeypatch):
@@ -256,7 +290,7 @@ def approve_and_publish_route(client, headers, route):
 
 def test_engine_route_review_and_publish(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
 
     created = client.post("/api/engine/routes", headers=headers, json=build_engine_route())
     assert created.status_code == 200
@@ -294,7 +328,7 @@ def test_engine_route_review_and_publish(tmp_path, monkeypatch):
 
 def test_create_route_from_baidu_generates_backend_decision_points(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     response = create_route_from_baidu(
         client,
         headers,
@@ -320,7 +354,7 @@ def test_create_route_from_baidu_generates_backend_decision_points(tmp_path, mon
 
 def test_create_route_from_baidu_handles_bus_and_subway_anchors(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     bus_response = create_route_from_baidu(
         client,
         headers,
@@ -366,7 +400,7 @@ def test_create_route_from_baidu_handles_bus_and_subway_anchors(tmp_path, monkey
 
 def test_unpublished_route_can_be_deleted_but_published_route_cannot(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     client.post("/api/engine/routes", headers=headers, json=build_engine_route())
 
     deleted = client.delete("/api/engine/routes/route-engine-test", headers=headers)
@@ -390,7 +424,7 @@ def test_unpublished_route_can_be_deleted_but_published_route_cannot(tmp_path, m
 
 def test_high_risk_step_requires_family_photo(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     route = build_engine_route()
     route["steps"][1]["riskLevel"] = "HIGH"
 
@@ -420,7 +454,7 @@ def test_high_risk_step_requires_family_photo(tmp_path, monkeypatch):
 
 def test_high_risk_walking_decision_requires_landmark_hint(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     route = build_engine_route()
     step = route["steps"][1]
     step["type"] = "RIGHT"
@@ -452,7 +486,7 @@ def test_high_risk_walking_decision_requires_landmark_hint(tmp_path, monkeypatch
 
 def test_step_review_saves_and_removes_custom_voice(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     client.post("/api/engine/routes", headers=headers, json=build_engine_route())
 
     saved = client.put(
@@ -500,7 +534,7 @@ def test_step_review_saves_and_removes_custom_voice(tmp_path, monkeypatch):
 
 def test_generate_step_tts_saves_audio_and_updates_voice(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     client.post("/api/engine/routes", headers=headers, json=build_engine_route())
     import app.main
 
@@ -519,7 +553,7 @@ def test_generate_step_tts_saves_audio_and_updates_voice(tmp_path, monkeypatch):
 
 def test_ai_step_writer_updates_copy_without_changing_route_structure(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     route = build_engine_route()
     route["steps"][0]["voice"] = {
         "enterVoiceText": "家属真人语音",
@@ -570,7 +604,7 @@ def test_ai_step_writer_updates_copy_without_changing_route_structure(tmp_path, 
 
 def test_ai_step_writer_failure_preserves_system_copy(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     created = client.post("/api/engine/routes", headers=headers, json=build_engine_route()).json()
     import app.main
 
@@ -586,7 +620,7 @@ def test_ai_step_writer_failure_preserves_system_copy(tmp_path, monkeypatch):
 def test_collection_plan_falls_back_and_does_not_change_route(tmp_path, monkeypatch):
     monkeypatch.setenv("DEEPSEEK_API_KEY", "")
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     route = build_engine_route()
     route["steps"][1]["type"] = "RIGHT"
     route["steps"][1]["riskLevel"] = "HIGH"
@@ -618,7 +652,7 @@ def test_collection_plan_falls_back_and_does_not_change_route(tmp_path, monkeypa
 
 def test_collection_plan_uses_ai_but_keeps_required_rule_tasks(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     route = build_engine_route()
     route["steps"][1]["riskLevel"] = "HIGH"
     client.post("/api/engine/routes", headers=headers, json=route)
@@ -655,7 +689,7 @@ def test_collection_plan_uses_ai_but_keeps_required_rule_tasks(tmp_path, monkeyp
 
 def test_batch_tts_preserves_custom_and_continues_after_failure(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     route = build_engine_route()
     route["steps"][0]["voice"] = {
         "enterVoiceText": "真人语音",
@@ -694,7 +728,7 @@ def test_batch_tts_preserves_custom_and_continues_after_failure(tmp_path, monkey
 
 def test_route_has_five_voice_moments_and_system_render_is_cached(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     created = client.post("/api/engine/routes", headers=headers, json=build_engine_route())
     voice = created.json()["steps"][0]["voice"]
     for moment in ["enter", "repeat", "near", "arrived", "offRoute"]:
@@ -719,7 +753,7 @@ def test_route_has_five_voice_moments_and_system_render_is_cached(tmp_path, monk
 
 def test_empty_engine_route_cannot_publish(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     route = build_engine_route()
     route["id"] = "empty-route"
     route["steps"] = []
@@ -731,7 +765,7 @@ def test_empty_engine_route_cannot_publish(tmp_path, monkeypatch):
 
 def test_published_route_can_be_disabled(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     client.post("/api/engine/routes", headers=headers, json=build_engine_route())
     for step_id in ["step-start", "step-bus", "step-destination"]:
         client.put(
@@ -748,7 +782,7 @@ def test_published_route_can_be_disabled(tmp_path, monkeypatch):
 
 def test_trip_results_summary(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     client.post("/api/engine/routes", headers=headers, json=build_engine_route())
     for result in ["FOUND", "HELP"]:
         response = client.post(
@@ -771,7 +805,7 @@ def test_trip_results_summary(tmp_path, monkeypatch):
         "/api/engine/routes/route-engine-test/trip-summary",
         headers=headers,
     ).json()
-    assert result["summary"] == {"total": 2, "FOUND": 1, "NOT_FOUND": 0, "HELP": 1}
+    assert result["summary"] == {"total": 2, "FOUND": 1, "NOT_FOUND": 0, "HELP": 1, "ARRIVED": 0}
     assert result["routeHealthLevel"] == "BAD"
     assert result["foundCount"] == 1
     assert result["helpCount"] == 1
@@ -780,7 +814,7 @@ def test_trip_results_summary(tmp_path, monkeypatch):
 
 def test_help_result_records_contact_metadata(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     client.post("/api/engine/routes", headers=headers, json=build_engine_route())
 
     response = client.post(
@@ -822,14 +856,54 @@ def test_help_result_records_contact_metadata(tmp_path, monkeypatch):
     resolved_result = resolved.json()
     assert resolved_result["helpStatus"] == "RESOLVED"
     assert resolved_result["handledNote"] == "家属已回电"
-    assert resolved_result["handledByUserId"] == "legacy"
+    assert resolved_result["handledByUserId"].startswith("user-")
     assert resolved_result["handledAt"]
+
+
+def test_arrival_result_is_listed_for_family(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    headers = admin_headers(client)
+    client.post("/api/engine/routes", headers=headers, json=build_engine_route())
+
+    response = client.post(
+        "/api/engine/trip-results",
+        headers=headers,
+        json={
+            "tripId": "trip-arrived",
+            "routeId": "route-engine-test",
+            "stepId": "step-destination",
+            "stepNo": 3,
+            "stepResult": "ARRIVED",
+            "emergencyContactName": "小王",
+            "emergencyRelation": "女儿",
+            "emergencyPhone": "13800000000",
+        },
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["stepResult"] == "ARRIVED"
+
+    events = client.get(
+        "/api/engine/routes/route-engine-test/arrival-events",
+        headers=headers,
+    )
+    assert events.status_code == 200
+    assert events.json()["events"][0]["id"] == result["id"]
+
+    summary = client.get(
+        "/api/engine/routes/route-engine-test/trip-summary",
+        headers=headers,
+    )
+    assert summary.status_code == 200
+    assert summary.json()["summary"]["ARRIVED"] == 1
+    assert summary.json()["arrivedCount"] == 1
+    assert summary.json()["completedTrips"] == 1
 
 
 def test_route_review_center_and_trip_analysis(tmp_path, monkeypatch):
     monkeypatch.setenv("DEEPSEEK_API_KEY", "")
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     client.post("/api/engine/routes", headers=headers, json=build_engine_route())
     for payload in [
         {"tripId": "trip-1", "stepId": "step-start", "stepNo": 1, "stepResult": "FOUND"},
@@ -862,7 +936,7 @@ def test_route_review_center_and_trip_analysis(tmp_path, monkeypatch):
 
 def test_photo_review_rule_based_result_is_saved(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
-    headers = {"Authorization": "Bearer test-token"}
+    headers = admin_headers(client)
     client.post("/api/engine/routes", headers=headers, json=build_engine_route())
     response = client.post(
         "/api/engine/routes/route-engine-test/steps/step-bus/photo-review",
@@ -891,7 +965,8 @@ def test_wechat_account_login_and_route_scope(tmp_path, monkeypatch):
 
     status = client.get("/api/auth/status")
     assert status.status_code == 200
-    assert status.json() == {"bootstrapped": False}
+    # create_client 已通过微信登录创建管理员，系统已 bootstrap
+    assert status.json() == {"bootstrapped": True}
 
     login = client.post(
         "/api/auth/wechat-login",
@@ -953,6 +1028,68 @@ def test_wechat_login_creates_family_user_and_elder_binding(tmp_path, monkeypatc
     )
     assert second_login.status_code == 200
     assert second_login.json()["user"]["familyId"] == result["user"]["familyId"]
+
+
+def test_disabled_family_membership_invalidates_existing_session(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    import app.main
+
+    monkeypatch.setattr(
+        app.main.container,
+        "request_wechat_code_session",
+        lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
+    )
+
+    login = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "disabled-member", "familyName": "失效家庭"},
+    ).json()
+    headers = {"Authorization": f"Bearer {login['token']}"}
+
+    with sqlite3.connect(tmp_path / "auth.db") as conn:
+        conn.execute(
+            "UPDATE family_members SET status = 'DISABLED' WHERE user_id = ? AND family_id = ?",
+            (login["user"]["id"], login["user"]["familyId"]),
+        )
+
+    response = client.get("/api/auth/me", headers=headers)
+    assert response.status_code == 403
+    assert response.json()["detail"] == "家庭成员关系已失效，请重新登录"
+
+
+def test_family_admin_can_manage_all_family_elders(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    import app.main
+
+    monkeypatch.setattr(
+        app.main.container,
+        "request_wechat_code_session",
+        lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
+    )
+
+    login = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "all-elder-admin", "familyName": "多老人家庭"},
+    ).json()
+    headers = {"Authorization": f"Bearer {login['token']}"}
+    extra_elder_id = "elder-extra-admin-test"
+    with sqlite3.connect(tmp_path / "auth.db") as conn:
+        conn.execute(
+            """
+            INSERT INTO elders (id, family_id, name, phone, note, created_at, updated_at)
+            VALUES (?, ?, ?, '', '', '2026-06-25T00:00:00+00:00', '2026-06-25T00:00:00+00:00')
+            """,
+            (extra_elder_id, login["user"]["familyId"], "第二位老人"),
+        )
+
+    me = client.get("/api/auth/me", headers=headers)
+    assert extra_elder_id in me.json()["user"]["accessibleElderIds"]
+
+    route = build_engine_route_with_id("route-extra-elder", "第二位老人路线")
+    route["elderId"] = extra_elder_id
+    created = client.post("/api/engine/routes", headers=headers, json=route)
+    assert created.status_code == 200
+    assert created.json()["elderId"] == extra_elder_id
 
 
 def test_two_wechat_families_have_isolated_elder_routes(tmp_path, monkeypatch):
@@ -1017,7 +1154,7 @@ def test_session_user_cannot_access_unowned_legacy_route_without_family_id(tmp_p
     ).json()
     headers = {"Authorization": f"Bearer {login['token']}"}
 
-    legacy_headers = {"Authorization": "Bearer test-token"}
+    legacy_headers = admin_headers(client)
     legacy_route = build_engine_route_with_id("legacy-route", "旧路线")
     legacy_route.pop("familyId", None)
     created = client.post("/api/engine/routes", headers=legacy_headers, json=legacy_route)
@@ -1179,6 +1316,42 @@ def test_elder_wechat_binding_uses_family_member_role(tmp_path, monkeypatch):
     assert publish.status_code == 403
 
 
+def test_logged_in_elder_binding_rejects_other_family_code(tmp_path, monkeypatch):
+    client = create_client(tmp_path, monkeypatch)
+    import app.main
+
+    monkeypatch.setattr(
+        app.main.container,
+        "request_wechat_code_session",
+        lambda code: {"openid": f"openid-{code}", "session_key": "secret-session-key"},
+    )
+
+    family_a = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "bind-family-a", "familyName": "A家"},
+    ).json()
+    family_b = client.post(
+        "/api/auth/wechat-login",
+        json={"code": "bind-family-b", "familyName": "B家"},
+    ).json()
+    headers_a = {"Authorization": f"Bearer {family_a['token']}"}
+    headers_b = {"Authorization": f"Bearer {family_b['token']}"}
+
+    bind_code = client.post(
+        "/api/auth/elder-bind-codes",
+        headers=headers_b,
+        json={"elderId": family_b["user"]["accessibleElderIds"][0], "relation": "本人"},
+    ).json()["code"]
+
+    rejected = client.post(
+        "/api/auth/elder-bindings",
+        headers=headers_a,
+        json={"code": bind_code},
+    )
+    assert rejected.status_code == 403
+    assert rejected.json()["detail"] == "绑定码不属于当前家庭"
+
+
 def test_emergency_contact_is_family_scoped_and_elder_readable(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
     import app.main
@@ -1276,7 +1449,7 @@ def test_route_plan_requires_server_side_baidu_key(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
     response = client.post(
         "/api/engine/route-plans",
-        headers={"Authorization": "Bearer test-token"},
+        headers=admin_headers(client),
         json={
             "mode": "WALKING",
             "origin": {"latitude": 31.25, "longitude": 121.32},
@@ -1288,7 +1461,7 @@ def test_route_plan_requires_server_side_baidu_key(tmp_path, monkeypatch):
 
     place_response = client.post(
         "/api/engine/places/search",
-        headers={"Authorization": "Bearer test-token"},
+        headers=admin_headers(client),
         json={"keyword": "富友嘉园一期", "region": "上海"},
     )
     assert place_response.status_code == 503
@@ -1300,7 +1473,7 @@ def test_route_advisor_falls_back_without_ai_key(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
     response = client.post(
         "/api/engine/routes/advise",
-        headers={"Authorization": "Bearer test-token"},
+        headers=admin_headers(client),
         json={
             "originName": "富友嘉园一期",
             "destinationName": "星荟中心",
@@ -1327,7 +1500,7 @@ def test_baidu_plan_summaries_are_generated_on_server(tmp_path, monkeypatch):
     client = create_client(tmp_path, monkeypatch)
     response = client.post(
         "/api/engine/routes/plan-summaries",
-        headers={"Authorization": "Bearer test-token"},
+        headers=admin_headers(client),
         json={
             "origin": {"name": "富友嘉园一期", "latitude": 31.25, "longitude": 121.32},
             "destination": {"name": "彩虹湾墨翠里", "latitude": 31.32, "longitude": 121.47},
@@ -1420,7 +1593,7 @@ def test_route_advisor_returns_structured_advice(tmp_path, monkeypatch):
     )
     response = client.post(
         "/api/engine/routes/advise",
-        headers={"Authorization": "Bearer test-token"},
+        headers=admin_headers(client),
         json={
             "originName": "富友嘉园一期",
             "destinationName": "星荟中心",
@@ -1455,7 +1628,7 @@ def test_reverse_geocode_returns_named_place(tmp_path, monkeypatch):
     )
     response = client.post(
         "/api/engine/places/reverse-geocode",
-        headers={"Authorization": "Bearer test-token"},
+        headers=admin_headers(client),
         json={"location": {"latitude": 31.246, "longitude": 121.487}},
     )
     assert response.status_code == 200

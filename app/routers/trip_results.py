@@ -62,6 +62,22 @@ def create_trip_results_router(
         events.sort(key=lambda item: item.get("occurredAt", ""), reverse=True)
         return {"events": events}
 
+    @router.get("/api/engine/routes/{route_id}/arrival-events")
+    def list_route_arrival_events(
+        route_id: str,
+        principal: dict[str, Any] = Depends(require_token),
+    ) -> dict:
+        route = load_engine_routes().get(route_id)
+        if not route or not family_guard(principal, route):
+            raise HTTPException(status_code=404, detail="route not found")
+        events = [
+            item
+            for item in load_trip_results()
+            if item.get("routeId") == route_id and item.get("stepResult") == "ARRIVED"
+        ]
+        events.sort(key=lambda item: item.get("occurredAt", ""), reverse=True)
+        return {"events": events}
+
     @router.put("/api/engine/routes/{route_id}/help-events/{event_id}")
     def update_route_help_event(
         route_id: str,
@@ -84,7 +100,7 @@ def create_trip_results_router(
                     execution["helpStatus"] = update.helpStatus
                     execution["handledNote"] = update.handledNote
                     execution["handledAt"] = now_iso()
-                    execution["handledByUserId"] = principal.get("userId", "")
+                    execution["handledByUserId"] = principal.get("id") or principal.get("userId", "")
                     execution["handledByName"] = principal.get("displayName", "")
                     execution["handledByRole"] = principal.get("role", "")
                     save_trip_results(executions)
@@ -98,9 +114,11 @@ def create_trip_results_router(
     ) -> dict:
         trip_results = load_trip_results()
         executions = [item for item in trip_results if item.get("routeId") == route_id]
-        summary = {"total": len(executions), "FOUND": 0, "NOT_FOUND": 0, "HELP": 0}
+        summary = {"total": len(executions), "FOUND": 0, "NOT_FOUND": 0, "HELP": 0, "ARRIVED": 0}
         for execution in executions:
-            summary[execution["stepResult"]] += 1
+            result = execution.get("stepResult")
+            if result in summary:
+                summary[result] += 1
         route = load_engine_routes().get(route_id)
         if not route:
             raise HTTPException(status_code=404, detail="route not found")

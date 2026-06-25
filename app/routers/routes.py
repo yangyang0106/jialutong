@@ -42,8 +42,7 @@ def create_routes_router(
             and route.get("elderSlot") == slot
             and family_guard(principal, route)
             and (
-                principal.get("authType") == "LEGACY_TOKEN"
-                or not route.get("elderId")
+                not route.get("elderId")
                 or route.get("elderId") in set(principal.get("accessibleElderIds") or [])
             )
         ]

@@ -13,12 +13,11 @@ class AppSettings:
     base_dir: Path
     data_dir: Path
     upload_dir: Path
-    routes_file: Path
     engine_routes_file: Path
     trip_results_file: Path
     auth_db_file: Path
     public_base_url: str
-    upload_token: str
+    super_admin_openids: str
     baidu_map_key: str
     tencent_secret_id: str
     tencent_secret_key: str
@@ -43,12 +42,11 @@ def load_settings() -> AppSettings:
         base_dir=base_dir,
         data_dir=data_dir,
         upload_dir=data_dir / "uploads",
-        routes_file=data_dir / "routes.json",
         engine_routes_file=data_dir / "engine-routes.json",
         trip_results_file=data_dir / "trip-results.json",
         auth_db_file=data_dir / "auth.db",
         public_base_url=os.getenv("JIALUTONG_PUBLIC_BASE_URL", "http://127.0.0.1:8090").rstrip("/"),
-        upload_token=os.getenv("JIALUTONG_UPLOAD_TOKEN", ""),
+        super_admin_openids=os.getenv("JIALUTONG_SUPER_ADMIN_OPENIDS", ""),
         baidu_map_key=os.getenv("JIALUTONG_BAIDU_MAP_KEY", ""),
         tencent_secret_id=os.getenv("JIALUTONG_TENCENT_SECRET_ID", ""),
         tencent_secret_key=os.getenv("JIALUTONG_TENCENT_SECRET_KEY", ""),

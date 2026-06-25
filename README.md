@@ -1,6 +1,6 @@
-# 家路通文件与路线配置服务
+# 家路通后端服务
 
-提供图片/语音上传、路线步骤配置同步，以及完整老人路线的草稿、审核和发布能力。
+提供图片/语音上传、路线引擎、家属审核、路线发布、老人行程结果和账号家庭协同能力。
 
 ## 本地启动
 
@@ -9,7 +9,7 @@ cd jialutong-server
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-JIALUTONG_UPLOAD_TOKEN=local-dev-token \
+JIALUTONG_SUPER_ADMIN_OPENIDS=dev-admin-openid \
 JIALUTONG_PUBLIC_BASE_URL=http://127.0.0.1:8090 \
 JIALUTONG_BAIDU_MAP_KEY=替换为百度地图服务端AK \
 uvicorn app.main:app --host 0.0.0.0 --port 8090
@@ -31,8 +31,6 @@ uvicorn app.main:app --host 0.0.0.0 --port 8090
 - `PUT /api/auth/emergency-contact`：家庭管理员保存默认求助联系人
 - `POST /api/files`：上传图片或音频
 - `DELETE /api/files?url=...`：删除已上传文件
-- `GET /api/routes/{route_id}`：获取路线步骤配置
-- `PUT /api/routes/{route_id}/steps/{step_no}`：更新步骤配置
 - `POST /api/engine/route-plans`：由服务端请求百度地图路线规划
 - `POST /api/engine/routes/advise`：根据百度候选路线摘要生成家属路线建议
 - `POST /api/engine/routes/plan-summaries`：由服务端根据百度原始路线生成 AI 顾问候选摘要
@@ -51,7 +49,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8090
 - `GET /files/...`：访问上传后的文件
 
 家属端写接口使用 `Authorization: Bearer <登录后返回的 token>`。
-`JIALUTONG_UPLOAD_TOKEN` 仅在显式配置时作为部署脚本和应急管理 Token 兼容保留；未配置时不启用旧 Token 鉴权。不要将它放入小程序代码包。
+`JIALUTONG_SUPER_ADMIN_OPENIDS` 配置超管微信 openid（逗号分隔），命中后登录返回 `SUPER_ADMIN` 角色，可跨家庭排障。仅配置在服务端环境变量，不要放入小程序代码包。
 
 正式小程序端使用微信快速登录：
 
@@ -95,7 +93,7 @@ docker build -t jialutong-server .
 docker run -d \
   -p 8090:8090 \
   -v jialutong-data:/data \
-  -e JIALUTONG_UPLOAD_TOKEN='替换成长随机字符串' \
+  -e JIALUTONG_SUPER_ADMIN_OPENIDS='替换为微信openid' \
   -e JIALUTONG_PUBLIC_BASE_URL='https://your-domain.example.com' \
   -e JIALUTONG_BAIDU_MAP_KEY='替换为百度地图服务端AK' \
   jialutong-server

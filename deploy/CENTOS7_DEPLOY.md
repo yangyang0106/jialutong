@@ -77,13 +77,13 @@ cd server
 
 ```bash
 cp .env.production.example .env.production
-openssl rand -hex 32
 ```
 
 编辑 `.env.production`：
 
-- 将随机字符串写入 `JIALUTONG_UPLOAD_TOKEN`。
+- 将超管微信 openid 填入 `JIALUTONG_SUPER_ADMIN_OPENIDS`（多个用逗号分隔），命中后登录返回 `SUPER_ADMIN` 角色。
 - 填入百度地图服务端 AK，并在百度控制台允许新服务器出口 IP。
+- 填入微信小程序 `JIALUTONG_WECHAT_APPID` 和 `JIALUTONG_WECHAT_SECRET`。
 - 填入腾讯云 TTS 密钥。
 - 填入阿里百炼 API Key。
 - 保持 `JIALUTONG_PUBLIC_BASE_URL=https://jialutong.cloud`。

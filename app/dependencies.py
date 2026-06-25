@@ -47,14 +47,12 @@ class AppContainer:
     def __init__(self, settings: AppSettings, repository: AppRepository | None = None) -> None:
         self.settings = settings
         self.repository = repository or JsonAppRepository(
-            route_config_file=settings.routes_file,
             engine_routes_file=settings.engine_routes_file,
             trip_results_file=settings.trip_results_file,
         )
-        self.routes_lock = Lock()
         self.engine_routes_lock = Lock()
         self.trip_results_lock = Lock()
-        self.auth_store = AuthStore(settings.auth_db_file, settings.upload_token)
+        self.auth_store = AuthStore(settings.auth_db_file, settings.super_admin_openids)
         self.advise_route = advise_route
         self.generate_step_copy = generate_step_copy
         self.generate_collection_plan = generate_collection_plan
@@ -63,12 +61,6 @@ class AppContainer:
 
     def require_token(self, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         return self.auth_store.authenticate(authorization)
-
-    def load_routes(self) -> dict:
-        return self.repository.load_route_configs()
-
-    def save_routes(self, routes: dict) -> None:
-        self.repository.save_route_configs(routes)
 
     def load_engine_routes(self) -> dict[str, Any]:
         return self.repository.load_engine_routes()
@@ -244,9 +236,6 @@ class AppContainer:
                 require_token=self.require_token,
                 upload_dir=self.settings.upload_dir,
                 public_base_url=self.settings.public_base_url,
-                routes_lock=self.routes_lock,
-                load_routes=self.load_routes,
-                save_routes=self.save_routes,
             )
         )
         app.include_router(

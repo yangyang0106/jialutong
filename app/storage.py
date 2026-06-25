@@ -14,11 +14,3 @@ def save_json(path: Path, value: Any) -> None:
     temp_file = path.with_suffix(".tmp")
     temp_file.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
     temp_file.replace(path)
-
-
-def load_routes(path: Path) -> dict:
-    return load_json(path, {})
-
-
-def save_routes(path: Path, routes: dict) -> None:
-    save_json(path, routes)

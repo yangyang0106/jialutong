@@ -3,17 +3,6 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
-class StepConfig(BaseModel):
-    image: str | None = None
-    audio: str | None = None
-    desc: str | None = None
-    direction: str | None = None
-    latitude: float | None = None
-    longitude: float | None = None
-    verificationRequired: bool | None = None
-    distanceTracking: bool | None = None
-
-
 class Location(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
@@ -155,7 +144,7 @@ class StepExecution(BaseModel):
     routeId: str
     stepId: str
     stepNo: int
-    stepResult: Literal["FOUND", "NOT_FOUND", "HELP"]
+    stepResult: Literal["FOUND", "NOT_FOUND", "HELP", "ARRIVED"]
     occurredAt: str = ""
     helpReason: str = ""
     helpStatus: Literal["NONE", "REQUESTED", "CALLING", "RESOLVED"] = "NONE"
