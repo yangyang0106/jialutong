@@ -1,12 +1,27 @@
-const app = getApp();
-const {
-  getCachedPublishedRouteBySlot,
-  listPublishedElderSlotRoutes,
-  loadElderRoute
-} = require("../../utils/elder-route-loader");
-const { ELDER_ROUTE_SLOTS } = require("../../utils/elder-route-slots");
-const { getRouteStatus } = require("../../utils/route-status");
-const { getAuthState, clearAuthState, getCurrentAccount, requireFamilyLogin } = require("../../utils/auth");
+let routeLoader = null;
+let routeSlots = null;
+let routeStatus = null;
+let auth = null;
+
+function getRouteLoader() {
+  if (!routeLoader) routeLoader = require("../../utils/elder-route-loader");
+  return routeLoader;
+}
+
+function getRouteSlots() {
+  if (!routeSlots) routeSlots = require("../../utils/elder-route-slots");
+  return routeSlots;
+}
+
+function getRouteStatusModule() {
+  if (!routeStatus) routeStatus = require("../../utils/route-status");
+  return routeStatus;
+}
+
+function getAuthModule() {
+  if (!auth) auth = require("../../utils/auth");
+  return auth;
+}
 
 Page({
   data: {
@@ -27,15 +42,26 @@ Page({
     helpHolding: false
   },
 
+  onLoad() {
+    this.setRole("GUEST");
+    this.setRouteCards([], false);
+  },
+
   onShow() {
-    const role = this.checkRole();
-    this.verifySession();
-    if (role === "GUEST") {
+    try {
+      const role = this.checkRole();
+      this.verifySession();
+      if (role === "GUEST") {
+        this.setRouteCards([], false);
+        return;
+      }
+      this.setRouteCards([], true);
+      this.refreshRoutes();
+    } catch (error) {
+      console.warn("首页初始化失败，显示访客入口", error);
+      this.setRole("GUEST");
       this.setRouteCards([], false);
-      return;
     }
-    this.setRouteCards([], true);
-    this.refreshRoutes();
   },
 
   setRole(role) {
@@ -65,41 +91,53 @@ Page({
   },
 
   verifySession() {
-    const auth = getAuthState();
-    if (!auth || !auth.token) return;
-    getCurrentAccount()
-      .then(() => {})
-      .catch(() => {
-        if (getAuthState()) {
-          clearAuthState();
-          this.setRole("GUEST");
-          wx.showToast({ title: "登录已过期，请重新登录", icon: "none" });
-        }
-      });
+    try {
+      const { getAuthState, clearAuthState, getCurrentAccount } = getAuthModule();
+      const auth = getAuthState();
+      if (!auth || !auth.token) return;
+      getCurrentAccount()
+        .then(() => {})
+        .catch(() => {
+          if (getAuthState()) {
+            clearAuthState();
+            this.setRole("GUEST");
+            wx.showToast({ title: "登录已过期，请重新登录", icon: "none" });
+          }
+        });
+    } catch (error) {
+      console.warn("检查登录状态失败", error);
+    }
   },
 
   checkRole() {
-    const auth = getAuthState();
-    if (!auth || !auth.user) {
-      this.setRole("GUEST");
-      return "GUEST";
-    }
-    if (auth.expiresAt) {
-      const expiry = new Date(auth.expiresAt).getTime();
-      if (!isNaN(expiry) && expiry < Date.now()) {
-        clearAuthState();
+    try {
+      const { getAuthState, clearAuthState } = getAuthModule();
+      const auth = getAuthState();
+      if (!auth || !auth.user) {
         this.setRole("GUEST");
         return "GUEST";
       }
-    }
-    const role = auth.user.role;
-    if (role === "ELDER_USER") {
-      this.setRole("ELDER");
-      return "ELDER";
-    } else if (role === "FAMILY_ADMIN" || role === "FAMILY_MEMBER" || role === "SUPER_ADMIN") {
-      this.setRole("FAMILY");
-      return "FAMILY";
-    } else {
+      if (auth.expiresAt) {
+        const expiry = new Date(auth.expiresAt).getTime();
+        if (!isNaN(expiry) && expiry < Date.now()) {
+          clearAuthState();
+          this.setRole("GUEST");
+          return "GUEST";
+        }
+      }
+      const role = auth.user.role;
+      if (role === "ELDER_USER") {
+        this.setRole("ELDER");
+        return "ELDER";
+      } else if (role === "FAMILY_ADMIN" || role === "FAMILY_MEMBER" || role === "SUPER_ADMIN") {
+        this.setRole("FAMILY");
+        return "FAMILY";
+      } else {
+        this.setRole("GUEST");
+        return "GUEST";
+      }
+    } catch (error) {
+      console.warn("读取登录身份失败", error);
       this.setRole("GUEST");
       return "GUEST";
     }
@@ -114,23 +152,31 @@ Page({
   },
 
   refreshRoutes() {
-    const update = () => {
-      const routeCards = ELDER_ROUTE_SLOTS
-        .map((slot) => this.buildRouteCard(getCachedPublishedRouteBySlot(slot)))
-        .filter(Boolean);
-      this.setRouteCards(routeCards);
-    };
-    update();
-    listPublishedElderSlotRoutes().then((routes) => {
-      this.setRouteCards((routes || []).map((route) => this.buildRouteCard(route)).filter(Boolean));
-    }).finally(() => {
+    try {
+      const { getCachedPublishedRouteBySlot, listPublishedElderSlotRoutes } = getRouteLoader();
+      const { ELDER_ROUTE_SLOTS } = getRouteSlots();
+      const update = () => {
+        const routeCards = ELDER_ROUTE_SLOTS
+          .map((slot) => this.buildRouteCard(getCachedPublishedRouteBySlot(slot)))
+          .filter(Boolean);
+        this.setRouteCards(routeCards);
+      };
       update();
-      this.setRouteCards(this.data.routeCards, false);
-    });
+      listPublishedElderSlotRoutes().then((routes) => {
+        this.setRouteCards((routes || []).map((route) => this.buildRouteCard(route)).filter(Boolean));
+      }).finally(() => {
+        update();
+        this.setRouteCards(this.data.routeCards, false);
+      });
+    } catch (error) {
+      console.warn("加载首页路线失败", error);
+      this.setRouteCards([], false);
+    }
   },
 
   buildRouteCard(route) {
     if (!route) return null;
+    const { getRouteStatus } = getRouteStatusModule();
     const status = getRouteStatus(route);
     const destination = route.destination && route.destination.name;
     const origin = route.origin && route.origin.name;
@@ -153,6 +199,8 @@ Page({
   },
 
   goToRoute(event) {
+    const { loadElderRoute } = getRouteLoader();
+    const { getRouteStatus } = getRouteStatusModule();
     const routeId = event.currentTarget.dataset.routeId;
     wx.showLoading({ title: "正在准备路线", mask: true });
     loadElderRoute(routeId)
@@ -186,6 +234,7 @@ Page({
   },
 
   openRouteManager() {
+    const { requireFamilyLogin } = getAuthModule();
     if (!requireFamilyLogin("/pages/route-create/route-create")) return;
     wx.navigateTo({ url: "/pages/route-create/route-create" });
   },
@@ -221,6 +270,7 @@ Page({
   },
 
   requestHelp() {
+    const app = getApp();
     const phone = app.globalData.emergencyPhone;
     const name = app.globalData.emergencyContactName || "紧急联系人";
     const relation = app.globalData.emergencyRelation;

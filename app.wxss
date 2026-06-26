@@ -4,8 +4,8 @@
 
 page {
   min-height: 100%;
-  background: var(--color-bg);
-  color: var(--color-text-primary);
+  background: #fffaf5;
+  color: #222222;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   /* 设计令牌 - 在此声明，所有子元素可继承 */
   /* 品牌色 */
