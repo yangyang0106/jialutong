@@ -13,6 +13,17 @@ Page({
     routeCards: [],
     isLoading: true,
     userRole: "GUEST",
+    isGuest: true,
+    hasActiveRole: false,
+    isElder: false,
+    isFamily: false,
+    hasRoutes: false,
+    showLoading: false,
+    showEmpty: false,
+    questionText: "今天要去哪里？",
+    emptyText: "暂无路线，请联系家人",
+    helpButtonText: "按住3秒 · 紧急求助",
+    helpButtonClass: "help-button",
     helpHolding: false
   },
 
@@ -20,10 +31,37 @@ Page({
     const role = this.checkRole();
     this.verifySession();
     if (role === "GUEST") {
-      this.setData({ routeCards: [], isLoading: false });
+      this.setRouteCards([], false);
       return;
     }
+    this.setRouteCards([], true);
     this.refreshRoutes();
+  },
+
+  setRole(role) {
+    const isElder = role === "ELDER";
+    const isFamily = role === "FAMILY";
+    this.setData({
+      userRole: role,
+      isGuest: role === "GUEST",
+      hasActiveRole: role !== "GUEST",
+      isElder,
+      isFamily,
+      questionText: isElder ? "今天要去哪里？" : "家人路线",
+      emptyText: isElder ? "暂无路线，请联系家人" : "暂无路线，点击下方创建"
+    });
+  },
+
+  setRouteCards(routeCards, isLoading = this.data.isLoading) {
+    const cards = routeCards || [];
+    const hasRoutes = cards.length > 0;
+    this.setData({
+      routeCards: cards,
+      hasRoutes,
+      isLoading,
+      showLoading: Boolean(isLoading && !hasRoutes),
+      showEmpty: Boolean(!isLoading && !hasRoutes)
+    });
   },
 
   verifySession() {
@@ -34,7 +72,7 @@ Page({
       .catch(() => {
         if (getAuthState()) {
           clearAuthState();
-          this.setData({ userRole: "GUEST" });
+          this.setRole("GUEST");
           wx.showToast({ title: "登录已过期，请重新登录", icon: "none" });
         }
       });
@@ -43,26 +81,26 @@ Page({
   checkRole() {
     const auth = getAuthState();
     if (!auth || !auth.user) {
-      this.setData({ userRole: "GUEST" });
+      this.setRole("GUEST");
       return "GUEST";
     }
     if (auth.expiresAt) {
       const expiry = new Date(auth.expiresAt).getTime();
       if (!isNaN(expiry) && expiry < Date.now()) {
         clearAuthState();
-        this.setData({ userRole: "GUEST" });
+        this.setRole("GUEST");
         return "GUEST";
       }
     }
     const role = auth.user.role;
     if (role === "ELDER_USER") {
-      this.setData({ userRole: "ELDER" });
+      this.setRole("ELDER");
       return "ELDER";
     } else if (role === "FAMILY_ADMIN" || role === "FAMILY_MEMBER" || role === "SUPER_ADMIN") {
-      this.setData({ userRole: "FAMILY" });
+      this.setRole("FAMILY");
       return "FAMILY";
     } else {
-      this.setData({ userRole: "GUEST" });
+      this.setRole("GUEST");
       return "GUEST";
     }
   },
@@ -80,14 +118,14 @@ Page({
       const routeCards = ELDER_ROUTE_SLOTS
         .map((slot) => this.buildRouteCard(getCachedPublishedRouteBySlot(slot)))
         .filter(Boolean);
-      this.setData({ routeCards });
+      this.setRouteCards(routeCards);
     };
     update();
     listPublishedElderSlotRoutes().then((routes) => {
-      this.setData({ routeCards: (routes || []).map((route) => this.buildRouteCard(route)).filter(Boolean) });
+      this.setRouteCards((routes || []).map((route) => this.buildRouteCard(route)).filter(Boolean));
     }).finally(() => {
       update();
-      this.setData({ isLoading: false });
+      this.setRouteCards(this.data.routeCards, false);
     });
   },
 
@@ -104,7 +142,13 @@ Page({
       name: displayName,
       place: destination || origin || "家人准备的路线",
       ready: status.ready,
-      issueCount: status.incompleteSteps.length
+      issueCount: status.incompleteSteps.length,
+      statusClass: status.ready ? "ready-text" : "not-ready-text",
+      statusText: status.ready
+        ? "路线已启用"
+        : this.data.isElder
+          ? "路线准备中，请联系家人"
+          : `点这里补齐 · ${status.incompleteSteps.length} 步关键配置`
     };
   },
 
@@ -148,10 +192,18 @@ Page({
 
   startHelpHold() {
     if (this.helpHoldTimer) clearTimeout(this.helpHoldTimer);
-    this.setData({ helpHolding: true });
+    this.setData({
+      helpHolding: true,
+      helpButtonText: "继续按住3秒求助",
+      helpButtonClass: "help-button help-holding"
+    });
     this.helpHoldTimer = setTimeout(() => {
       this.helpHoldTimer = null;
-      this.setData({ helpHolding: false });
+      this.setData({
+        helpHolding: false,
+        helpButtonText: "按住3秒 · 紧急求助",
+        helpButtonClass: "help-button"
+      });
       this.requestHelp();
     }, 3000);
   },
@@ -159,7 +211,13 @@ Page({
   cancelHelpHold() {
     if (this.helpHoldTimer) clearTimeout(this.helpHoldTimer);
     this.helpHoldTimer = null;
-    if (this.data.helpHolding) this.setData({ helpHolding: false });
+    if (this.data.helpHolding) {
+      this.setData({
+        helpHolding: false,
+        helpButtonText: "按住3秒 · 紧急求助",
+        helpButtonClass: "help-button"
+      });
+    }
   },
 
   requestHelp() {
