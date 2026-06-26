@@ -25,6 +25,5 @@
   "requiredPrivateInfos": [
     "getLocation"
   ],
-  "sitemapLocation": "sitemap.json",
-  "lazyCodeLoading": "requiredComponents"
+  "sitemapLocation": "sitemap.json"
 }
