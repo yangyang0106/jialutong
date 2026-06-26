@@ -7,7 +7,7 @@
   </view>
 
   <!-- 未登录：选择身份 -->
-  <block wx:if="{{isGuest}}">
+  <block wx:if="{{userRole === 'GUEST'}}">
     <view class="guest-card animate-fade-in">
       <text class="guest-title">今天要去哪里？</text>
       <text class="guest-note">请选择您的身份开始使用</text>
@@ -17,40 +17,42 @@
   </block>
 
   <!-- 老人 & 家属：显示路线 -->
-  <block wx:if="{{hasActiveRole}}">
-    <text class="question">{{questionText}}</text>
+  <block wx:if="{{userRole !== 'GUEST'}}">
+    <text class="question">{{userRole === 'ELDER' ? '今天要去哪里？' : '家人路线'}}</text>
 
     <!-- 加载中 -->
-    <view wx:if="{{showLoading}}" class="loading-state">
+    <view wx:if="{{isLoading && routeCards.length === 0}}" class="loading-state">
       <text class="loading-text">正在加载路线...</text>
     </view>
 
     <!-- 路线列表 -->
-    <view class="route-list" wx:if="{{hasRoutes}}">
+    <view class="route-list" wx:if="{{routeCards.length > 0}}">
       <button wx:for="{{routeCards}}" wx:key="routeId" class="route-card" data-route-id="{{item.routeId}}" bindtap="goToRoute" hover-class="button-hover">
         <view class="route-icon">{{item.icon}}</view>
         <view class="route-copy">
           <text class="route-label">{{item.name}}</text>
           <text class="route-place">{{item.place}}</text>
-          <text class="{{item.statusClass}}">{{item.statusText}}</text>
+          <text class="{{item.ready ? 'ready-text' : 'not-ready-text'}}">
+            {{item.ready ? "路线已启用" : (userRole === "ELDER" ? "路线准备中，请联系家人" : "点这里补齐 · " + item.issueCount + " 步关键配置")}}
+          </text>
         </view>
         <text class="route-arrow">›</text>
       </button>
     </view>
 
     <!-- 空状态 -->
-    <view class="empty-state animate-fade-in" wx:if="{{showEmpty}}">
+    <view class="empty-state animate-fade-in" wx:if="{{routeCards.length === 0 && !isLoading}}">
       <view class="empty-state-icon">?</view>
-      <text class="empty-state-text">{{emptyText}}</text>
+      <text class="empty-state-text">{{userRole === 'ELDER' ? '暂无路线，请联系家人' : '暂无路线，点击下方创建'}}</text>
     </view>
 
     <!-- 老人操作按钮 -->
-    <button wx:if="{{isElder}}" class="{{helpButtonClass}}" bindtouchstart="startHelpHold" bindtouchend="cancelHelpHold" bindtouchcancel="cancelHelpHold" hover-class="button-hover">
-      {{helpButtonText}}
+    <button wx:if="{{userRole === 'ELDER'}}" class="help-button {{helpHolding ? 'help-holding' : ''}}" bindtouchstart="startHelpHold" bindtouchend="cancelHelpHold" bindtouchcancel="cancelHelpHold" hover-class="button-hover">
+      {{helpHolding ? "继续按住3秒求助" : "按住3秒 · 紧急求助"}}
     </button>
 
     <!-- 家属操作按钮 -->
-    <button wx:if="{{isFamily}}" class="config-button" bindtap="openRouteManager" hover-class="button-hover">创建路线</button>
-    <button wx:if="{{isFamily}}" class="config-button" bindtap="openConfig" hover-class="button-hover">家属配置</button>
+    <button wx:if="{{userRole === 'FAMILY'}}" class="config-button" bindtap="openRouteManager" hover-class="button-hover">创建路线</button>
+    <button wx:if="{{userRole === 'FAMILY'}}" class="config-button" bindtap="openConfig" hover-class="button-hover">家属配置</button>
   </block>
 </view>
