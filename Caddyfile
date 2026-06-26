@@ -1,4 +1,6 @@
 jialutong.cloud {
+    tls /certs/jialutong.cloud_bundle.pem /certs/jialutong.cloud.key
+
     encode zstd gzip
 
     request_body {
