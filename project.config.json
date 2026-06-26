@@ -59,6 +59,10 @@
         "type": "file"
       },
       {
+        "value": "config/upload.local.js",
+        "type": "file"
+      },
+      {
         "value": "project.private.config.json",
         "type": "file"
       }
