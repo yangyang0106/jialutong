@@ -44,7 +44,12 @@ uvicorn app.main:app --host 0.0.0.0 --port 8090
 - `POST /api/engine/routes/{route_id}/steps/{step_id}/tts`：为步骤生成腾讯云 TTS 语音
 - `POST /api/engine/routes/{route_id}/publish`：校验并发布路线
 - `GET /api/engine/elder-routes/{slot}`：获取 `TO_MOM / TO_HOME` 对应的最新已发布路线
-- `POST /api/engine/trip-results`：记录 `FOUND / NOT_FOUND / HELP`
+- `POST /api/engine/trip-results`：记录 `FOUND / NOT_FOUND / HELP / ARRIVED`
+- `GET /api/engine/arrival-events?status=NOTIFIED`：家属查看当前家庭未确认到达通知
+- `GET /api/engine/routes/{route_id}/arrival-events`：查看单条路线到达记录
+- `PUT /api/engine/routes/{route_id}/arrival-events/{event_id}`：家属确认已看到到达通知
+- `GET /api/engine/routes/{route_id}/help-events`：查看单条路线求助记录
+- `PUT /api/engine/routes/{route_id}/help-events/{event_id}`：家属标记求助处理状态
 - `GET /api/engine/routes/{route_id}/trip-summary`：统计步骤结果
 - `GET /files/...`：访问上传后的文件
 

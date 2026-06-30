@@ -882,6 +882,8 @@ def test_arrival_result_is_listed_for_family(tmp_path, monkeypatch):
     assert response.status_code == 200
     result = response.json()
     assert result["stepResult"] == "ARRIVED"
+    assert result["arrivalStatus"] == "NOTIFIED"
+    assert result["arrivalNotifiedAt"]
 
     events = client.get(
         "/api/engine/routes/route-engine-test/arrival-events",
@@ -889,6 +891,33 @@ def test_arrival_result_is_listed_for_family(tmp_path, monkeypatch):
     )
     assert events.status_code == 200
     assert events.json()["events"][0]["id"] == result["id"]
+    assert events.json()["events"][0]["routeName"] == "去妈妈家"
+
+    family_events = client.get(
+        "/api/engine/arrival-events?status=NOTIFIED",
+        headers=headers,
+    )
+    assert family_events.status_code == 200
+    assert family_events.json()["events"][0]["id"] == result["id"]
+
+    acknowledged = client.put(
+        f"/api/engine/routes/route-engine-test/arrival-events/{result['id']}",
+        headers=headers,
+        json={"arrivalStatus": "ACKNOWLEDGED", "acknowledgedNote": "家属已看到"},
+    )
+    assert acknowledged.status_code == 200
+    acknowledged_result = acknowledged.json()
+    assert acknowledged_result["arrivalStatus"] == "ACKNOWLEDGED"
+    assert acknowledged_result["acknowledgedNote"] == "家属已看到"
+    assert acknowledged_result["acknowledgedByUserId"].startswith("user-")
+    assert acknowledged_result["acknowledgedAt"]
+
+    no_pending_events = client.get(
+        "/api/engine/arrival-events?status=NOTIFIED",
+        headers=headers,
+    )
+    assert no_pending_events.status_code == 200
+    assert no_pending_events.json()["events"] == []
 
     summary = client.get(
         "/api/engine/routes/route-engine-test/trip-summary",

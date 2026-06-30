@@ -148,6 +148,8 @@ class StepExecution(BaseModel):
     occurredAt: str = ""
     helpReason: str = ""
     helpStatus: Literal["NONE", "REQUESTED", "CALLING", "RESOLVED"] = "NONE"
+    arrivalStatus: Literal["NONE", "NOTIFIED", "ACKNOWLEDGED"] = "NONE"
+    arrivalNotifiedAt: str = ""
     emergencyContactName: str = ""
     emergencyRelation: str = ""
     emergencyPhone: str = ""
@@ -156,6 +158,11 @@ class StepExecution(BaseModel):
 class HelpEventUpdate(BaseModel):
     helpStatus: Literal["REQUESTED", "CALLING", "RESOLVED"]
     handledNote: str = ""
+
+
+class ArrivalEventUpdate(BaseModel):
+    arrivalStatus: Literal["NOTIFIED", "ACKNOWLEDGED"] = "ACKNOWLEDGED"
+    acknowledgedNote: str = ""
 
 
 class RoutePlanRequest(BaseModel):
