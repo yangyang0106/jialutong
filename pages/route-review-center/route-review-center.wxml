@@ -44,10 +44,19 @@
       <text wx:if="{{!arrivalEvents.length}}" class="empty-copy">暂无到达记录。老人完成路线后，这里会显示到达时间。</text>
       <view wx:for="{{arrivalEvents}}" wx:key="id" class="arrival-card">
         <view class="help-head">
-          <text class="help-title">第 {{item.stepNo}} 步 · 已到达</text>
+          <text class="help-title">第 {{item.stepNo}} 步 · {{item.arrivalStatusText}}</text>
           <text class="help-time">{{item.occurredAt}}</text>
         </view>
         <text class="help-copy">{{item.contactText}}</text>
+        <text wx:if="{{item.acknowledgedByName}}" class="help-copy">确认人：{{item.acknowledgedByName}}</text>
+        <button
+          wx:if="{{item.arrivalStatus !== 'ACKNOWLEDGED'}}"
+          class="resolve-button"
+          loading="{{confirmingArrivalId === item.id}}"
+          disabled="{{!!confirmingArrivalId}}"
+          data-id="{{item.id}}"
+          bindtap="acknowledgeArrivalEvent"
+        >确认已看到</button>
       </view>
     </view>
 

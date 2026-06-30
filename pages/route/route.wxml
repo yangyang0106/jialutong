@@ -56,7 +56,7 @@
 
   <view wx:if="{{isFinished}}" class="finished-card">
     <text class="finished-title">已经到达</text>
-    <text class="finished-desc">已告诉系统，请在这里等家人</text>
+    <text class="finished-desc">{{arrivalNotifyStatus || "请在这里等家人"}}</text>
   </view>
 
   <view wx:if="{{simulatorEnabled && !isFinished}}" class="simulator-panel">

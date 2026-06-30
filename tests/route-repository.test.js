@@ -312,6 +312,20 @@ test("route repository lists arrival events", async () => {
   await repository.listRouteArrivalEvents("route-1");
   assert.equal(calls[0].method, "GET");
   assert.match(calls[0].url, /api\/engine\/routes\/route-1\/arrival-events$/);
+
+  calls.length = 0;
+  await repository.listFamilyArrivalEvents("NOTIFIED");
+  assert.equal(calls[0].method, "GET");
+  assert.match(calls[0].url, /api\/engine\/arrival-events\?status=NOTIFIED$/);
+
+  calls.length = 0;
+  await repository.updateRouteArrivalEvent("route-1", "event-1", "ACKNOWLEDGED", "已看到");
+  assert.equal(calls[0].method, "PUT");
+  assert.match(calls[0].url, /api\/engine\/routes\/route-1\/arrival-events\/event-1$/);
+  assert.deepEqual(calls[0].data, {
+    arrivalStatus: "ACKNOWLEDGED",
+    acknowledgedNote: "已看到"
+  });
 });
 
 

@@ -3,6 +3,7 @@ const {
   getRouteReviewCenter,
   listRouteArrivalEvents,
   listRouteHelpEvents,
+  updateRouteArrivalEvent,
   updateRouteHelpEvent
 } = require("../../utils/route-api");
 
@@ -42,6 +43,7 @@ function enrichArrivalEvent(event) {
     .join(" ");
   return {
     ...event,
+    arrivalStatusText: event.arrivalStatus === "ACKNOWLEDGED" ? "家属已确认" : "等待家属确认",
     contactText: contact || "未记录联系人"
   };
 }
@@ -80,6 +82,7 @@ Page({
     analysis: null,
     arrivalEvents: [],
     helpEvents: [],
+    confirmingArrivalId: "",
     resolvingHelpId: ""
   },
 
@@ -116,6 +119,25 @@ Page({
       .catch(() => {
         this.setData({ arrivalEvents: [] });
       });
+  },
+
+  acknowledgeArrivalEvent(event) {
+    const eventId = event.currentTarget.dataset.id;
+    if (!eventId || this.data.confirmingArrivalId) return;
+    this.setData({ confirmingArrivalId: eventId });
+    updateRouteArrivalEvent(this.routeId, eventId, "ACKNOWLEDGED", "家属已在复盘页确认")
+      .then(() => {
+        wx.showToast({ title: "已确认到达", icon: "none" });
+        this.loadArrivalEvents();
+      })
+      .catch((error) => {
+        wx.showModal({
+          title: "确认未保存",
+          content: error.message || "请稍后再试。",
+          showCancel: false
+        });
+      })
+      .finally(() => this.setData({ confirmingArrivalId: "" }));
   },
 
   loadHelpEvents() {

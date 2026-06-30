@@ -7,6 +7,23 @@ const {
   logoutFamilyAccount,
   requireFamilyLogin
 } = require("../../utils/auth");
+const {
+  listFamilyArrivalEvents,
+  updateRouteArrivalEvent
+} = require("../../utils/route-api");
+
+function formatArrivalEvent(event) {
+  const contact = [event.emergencyRelation, event.emergencyContactName, event.emergencyPhone]
+    .filter(Boolean)
+    .join(" ");
+  return {
+    ...event,
+    destinationText: event.destinationName || event.routeName || "目的地",
+    contactText: contact || "未记录联系人",
+    statusText: event.arrivalStatus === "ACKNOWLEDGED" ? "已确认" : "待确认"
+  };
+}
+
 Page({
   data: {
     familyPhone: "",
@@ -18,6 +35,8 @@ Page({
     contactSummary: "老人找不到路时，优先联系这里的人。发布前请填写真实号码。",
     authUser: null,
     elders: [],
+    arrivalNotifications: [],
+    confirmingArrivalId: "",
     bindCodePanel: null
   },
 
@@ -32,9 +51,20 @@ Page({
       listBoundElders()
         .then((elders) => this.setData({ elders }))
         .catch(() => this.setData({ elders: [] }));
+      this.loadArrivalNotifications();
     } else {
-      this.setData({ elders: [] });
+      this.setData({ elders: [], arrivalNotifications: [] });
     }
+  },
+
+  loadArrivalNotifications() {
+    listFamilyArrivalEvents("NOTIFIED")
+      .then((result) => {
+        this.setData({
+          arrivalNotifications: (result.events || []).map(formatArrivalEvent)
+        });
+      })
+      .catch(() => this.setData({ arrivalNotifications: [] }));
   },
 
   refreshContactStatus(settings = getSettings()) {
@@ -98,6 +128,25 @@ Page({
           showCancel: false
         });
       });
+  },
+
+  acknowledgeArrival(event) {
+    const { routeId, id } = event.currentTarget.dataset;
+    if (!routeId || !id || this.data.confirmingArrivalId) return;
+    this.setData({ confirmingArrivalId: id });
+    updateRouteArrivalEvent(routeId, id, "ACKNOWLEDGED", "家属已看到到达通知")
+      .then(() => {
+        wx.showToast({ title: "已确认到达", icon: "none" });
+        this.loadArrivalNotifications();
+      })
+      .catch((error) => {
+        wx.showModal({
+          title: "确认未保存",
+          content: error.message || "请稍后再试。",
+          showCancel: false
+        });
+      })
+      .finally(() => this.setData({ confirmingArrivalId: "" }));
   },
 
   closeBindCodePanel() {

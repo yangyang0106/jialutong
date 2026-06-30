@@ -62,6 +62,30 @@
     <button class="route-create-entry" bindtap="openRouteManager">进入路线管理</button>
   </view>
 
+  <view wx:if="{{authUser && arrivalNotifications.length}}" class="config-section arrival-section">
+    <view class="card-heading-row">
+      <view class="card-heading-copy">
+        <text class="settings-title">到达通知</text>
+        <text class="settings-note">老人完成路线后，这里会提醒家属确认。</text>
+      </view>
+      <text class="status-pill warning-pill">{{arrivalNotifications.length}} 条</text>
+    </view>
+    <view wx:for="{{arrivalNotifications}}" wx:key="id" class="arrival-notice">
+      <text class="arrival-title">已到达：{{item.destinationText}}</text>
+      <text class="arrival-meta">{{item.routeName}} · 第 {{item.stepNo}} 步</text>
+      <text class="arrival-meta">{{item.occurredAt}}</text>
+      <text class="arrival-meta">{{item.contactText}}</text>
+      <button
+        class="arrival-confirm-button"
+        loading="{{confirmingArrivalId === item.id}}"
+        disabled="{{!!confirmingArrivalId}}"
+        data-route-id="{{item.routeId}}"
+        data-id="{{item.id}}"
+        bindtap="acknowledgeArrival"
+      >我知道了</button>
+    </view>
+  </view>
+
   <view wx:if="{{bindCodePanel}}" class="bind-code-overlay">
     <view class="bind-code-card">
       <text class="bind-title">{{bindCodePanel.elderName}}的绑定码</text>

@@ -77,6 +77,47 @@
   background: var(--color-surface);
 }
 
+.arrival-section {
+  border-color: #cfe7c0;
+  background: #f8fff4;
+}
+
+.arrival-notice {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  border: 2rpx solid #cfe7c0;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.arrival-title {
+  color: var(--color-text-primary);
+  font-size: var(--font-md);
+  font-weight: var(--weight-heading);
+}
+
+.arrival-meta {
+  margin-top: var(--space-xs);
+  color: var(--color-text-secondary);
+  font-size: var(--font-sm);
+  line-height: 1.45;
+}
+
+button.arrival-confirm-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 84rpx;
+  margin-top: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: var(--font-base);
+  font-weight: var(--weight-heading);
+}
+
 .contact-warning {
   margin-top: var(--space-md);
   padding: var(--space-sm) var(--space-md);

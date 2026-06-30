@@ -149,6 +149,18 @@ function listRouteArrivalEvents(routeId) {
   return request(`/api/engine/routes/${routeId}/arrival-events`);
 }
 
+function listFamilyArrivalEvents(status) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return request(`/api/engine/arrival-events${query}`);
+}
+
+function updateRouteArrivalEvent(routeId, eventId, arrivalStatus = "ACKNOWLEDGED", acknowledgedNote = "") {
+  return request(`/api/engine/routes/${routeId}/arrival-events/${eventId}`, "PUT", {
+    arrivalStatus,
+    acknowledgedNote
+  });
+}
+
 function updateRouteHelpEvent(routeId, eventId, helpStatus = "RESOLVED", handledNote = "") {
   return request(`/api/engine/routes/${routeId}/help-events/${eventId}`, "PUT", {
     helpStatus,
@@ -171,6 +183,7 @@ module.exports = {
   generateStepTts,
   listRouteDrafts,
   listRouteArrivalEvents,
+  listFamilyArrivalEvents,
   listRouteHelpEvents,
   publishRouteDraft,
   recordStepExecution,
@@ -181,6 +194,7 @@ module.exports = {
   saveRouteDraft,
   searchPlaces,
   summarizeRoutePlansFromBaidu,
+  updateRouteArrivalEvent,
   updateRouteDraft,
   updateRouteHelpEvent
 };

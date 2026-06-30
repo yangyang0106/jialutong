@@ -56,6 +56,8 @@ Page({
     routeSafetyWarning: false,
     locationWarning: "",
     riskReminder: "",
+    arrivalNotifyStatus: "",
+    finishing: false,
     simulatorEnabled: false,
     simulatorProgress: 0
   },
@@ -325,19 +327,23 @@ Page({
   },
 
   nextStep() {
-    if (this.data.isOffRoute) {
+    if (this.data.isOffRoute || this.data.finishing) {
       return;
     }
     this.recordCurrentStepResult("FOUND");
     const nextIndex = this.data.currentStepIndex + 1;
     if (nextIndex >= this.data.route.steps.length) {
-      this.recordArrivalResult();
+      this.setData({ finishing: true, arrivalNotifyStatus: "正在通知家人" });
       clearTripProgress(this.data.route.id);
       this.stopResources();
       this.setData({ isFinished: true });
+      this.recordArrivalResult()
+        .then(() => this.setData({ arrivalNotifyStatus: "已通知家人" }))
+        .catch(() => this.setData({ arrivalNotifyStatus: "通知未送达，请打电话告诉家人" }))
+        .finally(() => this.setData({ finishing: false }));
       wx.showModal({
         title: "已经到达",
-        content: "路线已完成，已记录到达，家人可在路线复盘里看到。",
+        content: "路线已完成，正在告诉家人您已经到了。",
         showCancel: false
       });
       return;
@@ -422,9 +428,11 @@ Page({
   },
 
   recordArrivalResult() {
-    if (this.simulatorEnabled || !this.data.route || !this.data.currentStep) return;
+    if (this.simulatorEnabled || !this.data.route || !this.data.currentStep) {
+      return Promise.resolve(null);
+    }
     const step = this.data.currentStep;
-    recordStepExecution({
+    return recordStepExecution({
       tripId: this.tripId,
       routeId: this.data.route.engineRouteId || this.data.route.id,
       stepId: step.engineStepId || String(step.stepNo),
@@ -435,7 +443,7 @@ Page({
       emergencyContactName: app.globalData.emergencyContactName || "",
       emergencyRelation: app.globalData.emergencyRelation || "",
       emergencyPhone: app.globalData.emergencyPhone || ""
-    }).catch(() => null);
+    });
   },
 
   closeHelp() {
